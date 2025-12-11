@@ -115,6 +115,14 @@
       grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
       gap: 10px;
     }
+    /* 画像保存用の固定3列レイアウト */
+    body.capture-mode #outputPanel {
+      width: 1100px;         /* 好みで 1000〜1200 くらいに調整OK */
+      margin: 0 auto;        /* 真ん中寄せ（お好み） */
+    }
+    body.capture-mode .cards {
+      grid-template-columns: repeat(3, minmax(240px, 1fr));
+    }
     .card {
       background: #020617;
       border-radius: 10px;
@@ -593,11 +601,19 @@
         return;
       }
 
+      // ★ ここで一時的に「キャプチャ用レイアウト」に切り替える
+      document.body.classList.add("capture-mode");
+      // レイアウトが切り替わるまでほんの少し待つ
+      await new Promise(r => setTimeout(r, 50));
+
       const canvas = await html2canvas(target, {
         backgroundColor: "#171e2b",
         scale: 2,
         useCORS: true
       });
+
+      // キャプチャが終わったら元に戻す
+      document.body.classList.remove("capture-mode");
 
       const link = document.createElement("a");
       link.download = "chunithm_rating.png";

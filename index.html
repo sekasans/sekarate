@@ -122,7 +122,7 @@
 
     /* キャプチャ時だけ固定幅で横に広げる */
     body.capture-mode #outputPanel {
-      width: 1700px;     /* 1800px とかでもOK、好みで */
+      width: var(--capture-width, 1700px); /* ← デフォルト1700px。JSから上書き */
       max-width: none;
       margin: 0 auto;    /* ついでに中央寄せ */
     }
@@ -601,10 +601,16 @@
         return;
       }
 
-      // ★ ここで一時的に「キャプチャ用レイアウト」に切り替える
+      // ★ 画面幅で「PC or スマホ」をざっくり判定
+      const isMobile = window.innerWidth <= 768;
+
+      // ★ モバイルはちょっと狭め（例: 1100px）、PCは広め（1700px）
+      const captureWidth = isMobile ? "1100px" : "1700px";
+      document.body.style.setProperty("--capture-width", captureWidth);
+
+      // キャプチャ用レイアウトに切り替え
       document.body.classList.add("capture-mode");
-      // レイアウトが切り替わるまでほんの少し待つ
-      await new Promise(r => setTimeout(r, 50));
+      await new Promise(r => setTimeout(r, 50));  // レイアウト反映待ち
 
       const canvas = await html2canvas(target, {
         backgroundColor: "#171e2b",
@@ -612,8 +618,9 @@
         useCORS: true
       });
 
-      // キャプチャが終わったら元に戻す
+      // 元に戻す
       document.body.classList.remove("capture-mode");
+      document.body.style.removeProperty("--capture-width");
 
       const link = document.createElement("a");
       link.download = "chunithm_rating.png";

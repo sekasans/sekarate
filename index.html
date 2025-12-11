@@ -225,7 +225,7 @@
       <input id="playerName" type="text" placeholder="せか 等" />
 
       <label style="display:flex;align-items:center;gap:6px;margin:4px 0 8px;">
-        <input type="checkbox" id="showId" checked />
+        <input type="checkbox" id="showId" />
         <span style="font-size:12px;opacity:0.8;">ID（譜面ID）を表示する</span>
       </label>
 
@@ -233,13 +233,18 @@
       <textarea id="ratingTsv" placeholder="frame&#9;title&#9;diff&#9;score&#9;idx&#10;BEST&#9;U&amp;iVERSE ..."></textarea>
 
       <label>定数表 TSV（idx / title / diff / const / imageUrl ...）</label>
-      <textarea id="constTsv" placeholder="idx&#9;title&#9;diff&#9;const&#9;imageUrl&#10;2326&#9;曲名&#9;MAS&#9;14.4&#9;https://...webp"></textarea>
+      <textarea id="constTsv" placeholder="idx&#9;title&#9;diff&#9;const&#9;imageUrl&#10;0&#9;曲名&#9;MAS&#9;14.4&#9;https://...webp"></textarea>
 
       <div>
         <button class="btn" id="generateBtn">Generate</button>
         <button class="btn" id="saveImageBtn" style="margin-left:4px;background:#10b981;">
           レート表を画像として保存
         </button>
+      </div>
+
+      <div id="loadingIndicator"
+          style="display:none;font-size:12px;opacity:0.8;margin-top:4px;">
+        定数表を読み込み中です…
       </div>
 
       <div id="errorBox" class="error"></div>
@@ -358,9 +363,11 @@
       });
     }
 
-    function build() {
+    const CONST_SHEET_URL = "https://script.google.com/macros/s/AKfycbzFCBBjjHSG8REzEpSlw48SmAbrRNMnjMPHg3fd0bF7QA1_A3xD6vApLFy4M5QVTX7xDA/exec";
+
+    async function build() {
       const ratingText = document.getElementById("ratingTsv").value;
-      const constText   = document.getElementById("constTsv").value;
+      // const constText   = document.getElementById("constTsv").value;
       const playerName  = document.getElementById("playerName").value.trim();
       const showId      = document.getElementById("showId").checked;
       const errorBox    = document.getElementById("errorBox");
@@ -370,10 +377,37 @@
         errorBox.textContent = "レーティング対象 TSV を貼り付けてください。";
         return;
       }
-      if (!constText.trim()) {
-        errorBox.textContent = "定数表 TSV を貼り付けてください。";
+      
+      // ★★★ Google Sheets から直接定数TSVを取得する ★★★
+      let constText = "";
+
+      const loading = document.getElementById("loadingIndicator");
+      const generateBtnEl = document.getElementById("generateBtn");
+      const saveImageBtnEl = document.getElementById("saveImageBtn");
+
+      // 読み込み中表示 & ボタン無効化
+      loading.style.display = "inline";
+      generateBtnEl.disabled = true;
+      saveImageBtnEl.disabled = true;
+
+      try {
+        const res = await fetch(CONST_SHEET_URL);
+        constText = await res.text();
+      } catch (e) {
+        console.error(e);
+        errorBox.textContent = "定数表スプレッドシートの読み込みに失敗しました。";
         return;
+      } finally {
+        // 読み込み完了したら戻す
+        loading.style.display = "none";
+        generateBtnEl.disabled = false;
+        saveImageBtnEl.disabled = false;
       }
+
+      // if (!constText.trim()) {
+      //   errorBox.textContent = "定数表 TSV を貼り付けてください。";
+      //   return;
+      // }
 
       let ratingRows, constRows;
       try {

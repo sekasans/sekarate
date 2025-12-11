@@ -307,7 +307,9 @@
     // 単曲レート計算（CHUNITHM NEW / VERSE 相当）
     function calcSingleRate(constant, score) {
       const rawC = Number(constant);
-      const c = Math.round(rawC * 10) / 10;   // ★ 追加
+
+      // 定数は0.1刻み — 誤差吸収
+      const c = Math.round(rawC * 10) / 10;
 
       const s = Number(score);
       if (!isFinite(c) || !isFinite(s)) return null;
@@ -335,13 +337,13 @@
       } else if (s < 1009000) {
         r = c + 2.0 + (s - 1007500) / 10000;
       } else {
-        r = c + 2.15;
+        // SSS+ は「必ず譜面定数 + 2.15」を誤差ゼロで返す
+        return (Math.floor(c * 100) + 215) / 100;
       }
 
-      // ゲーム準拠：0.00025刻みで切り捨て（誤差吸収用に ε を加算）
+      // 最終丸め — 0.00025単位に切り捨て
       const EPS = 1e-9;
-      r = Math.floor((r + EPS) * 4000) / 4000;
-      return r;
+      return Math.floor((r + EPS) * 4000) / 4000;
     }
 
     function floor2(v) {

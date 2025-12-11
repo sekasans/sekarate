@@ -338,7 +338,7 @@
         r = c + 2.0 + (s - 1007500) / 10000;
       } else {
         // SSS+ は「必ず譜面定数 + 2.15」を誤差ゼロで返す
-        return (Math.floor(c * 100) + 215) / 100;
+        r = (Math.floor(c * 100) + 215) / 100;
       }
 
       // 最終丸め — 0.00025単位に切り捨て
@@ -347,7 +347,8 @@
     }
 
     function floor2(v) {
-      return Math.floor(v * 100) / 100;
+      const EPS = 1e-9;
+      return Math.floor((v + EPS) * 100) / 100;
     }
 
     // TSV/CSV をパース（タブ or カンマ両対応）

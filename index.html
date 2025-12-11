@@ -299,7 +299,9 @@
   <script>
     // 単曲レート計算（CHUNITHM NEW / VERSE 相当）
     function calcSingleRate(constant, score) {
-      const c = Number(constant);
+      const rawC = Number(constant);
+      const c = Math.round(rawC * 10) / 10;   // ★ 追加
+
       const s = Number(score);
       if (!isFinite(c) || !isFinite(s)) return null;
 
@@ -308,39 +310,30 @@
       if (s < 500000) {
         r = 0;
       } else if (s < 800000) {
-        // C → BBB
         r = (c - 5) / 2 * (s - 500000) / 300000;
       } else if (s < 900000) {
-        // BBB → A
         r = (c - 5) / 2 + (c - 5) / 2 * (s - 800000) / 100000;
       } else if (s < 925000) {
-        // A
         r = c - 5.0;
       } else if (s < 950000) {
-        // AA
         r = c - 3.34;
       } else if (s < 975000) {
-        // AAA：150点毎+0.01
         r = (c - 1.67) + (s - 950000) / 15000;
       } else if (s < 1000000) {
-        // S, S+
         r = c + (s - 975000) / 25000;
       } else if (s < 1005000) {
-        // SS
         r = c + 1.0 + (s - 1000000) / 10000;
       } else if (s < 1007500) {
-        // SS+
         r = c + 1.5 + (s - 1005000) / 5000;
       } else if (s < 1009000) {
-        // SSS
         r = c + 2.0 + (s - 1007500) / 10000;
       } else {
-        // SSS+
         r = c + 2.15;
       }
 
-      // ゲーム準拠：0.00025刻みで切り捨て
-      r = Math.floor(r * 4000) / 4000;
+      // ゲーム準拠：0.00025刻みで切り捨て（誤差吸収用に ε を加算）
+      const EPS = 1e-9;
+      r = Math.floor((r + EPS) * 4000) / 4000;
       return r;
     }
 

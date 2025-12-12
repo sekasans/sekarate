@@ -499,7 +499,11 @@
 
       const bestAvg = avgRating(bestSongs, 30);
       const newAvg  = avgRating(newSongs, 20);
-      const allAvg  = avgRating(songs, 50);
+
+      const allAvg =
+        (bestAvg != null && newAvg != null)
+          ? floor2((bestAvg * 30 + newAvg * 20) / 50)
+          : null;
 
       // サマリ表示（表示時も切り捨て）
       document.getElementById("summaryRating").textContent =

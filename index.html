@@ -471,6 +471,10 @@
         const constValue  = Number(constStr);
         const score       = Number(row.score ?? row["score"] ?? row.Score ?? 0);
         const rateRaw     = isFinite(constValue) ? calcSingleRate(constValue, score) : null;
+
+        // ★ 1/4000 刻みの整数にして保持（誤差ゼロ）
+        const units4000   = (rateRaw != null) ? Math.round(rateRaw * 4000) : null;
+
         const rateDisplay = rateRaw != null ? floor2(rateRaw) : null;
 
         songs.push({
@@ -482,6 +486,7 @@
           constValue: isFinite(constValue) ? constValue : null,
           imageUrl: base.imageUrl || "",
           rateRaw,
+          units4000,      // ★追加
           rateDisplay
         });
       }
@@ -489,29 +494,29 @@
       const bestSongs = songs.filter(s => s.frame === "BEST");
       const newSongs  = songs.filter(s => s.frame === "NEW");
 
-      // 分母固定で平均（BEST:30 / NEW:20 / ALL:50）
-      function avgRating(arr, denom) {
-        const vals = arr.map(s => s.rateRaw).filter(v => v != null);
-        if (!vals.length) return null;
-        const sum = vals.reduce((a,b)=>a+b,0);
-        return floor2(sum / denom);
+      function sumPerSong2dp(arr) {
+        // 各曲を2桁切り捨てした値で合計
+        return arr
+          .map(s => (s.rateRaw != null ? floor2(s.rateRaw) : null))
+          .filter(v => v != null)
+          .reduce((a, b) => a + b, 0);
       }
 
-      const bestAvg = avgRating(bestSongs, 30);
-      const newAvg  = avgRating(newSongs, 20);
+      const bestSum2 = sumPerSong2dp(bestSongs);
+      const newSum2  = sumPerSong2dp(newSongs);
 
-      const allAvg =
-        (bestAvg != null && newAvg != null)
-          ? floor2((bestAvg * 30 + newAvg * 20) / 50)
-          : null;
+      // BEST/NEW/ALL は「2桁化した合計」を分母で割って、最後も2桁切り捨て
+      const bestAvg = floor2(bestSum2 / 30);
+      const newAvg  = floor2(newSum2 / 20);
+      const allAvg  = floor2((bestSum2 + newSum2) / 50);
 
       // サマリ表示（表示時も切り捨て）
       document.getElementById("summaryRating").textContent =
-        "Rating " + (allAvg != null ? floor2(allAvg).toFixed(2) : "--.--");
+        "Rating " + (allAvg != null ? allAvg.toFixed(2) : "--.--");
       document.getElementById("summaryBest").textContent =
-        "BEST " + (bestAvg != null ? floor2(bestAvg).toFixed(2) : "--.--");
+        "BEST " + (bestAvg != null ? bestAvg.toFixed(2) : "--.--");
       document.getElementById("summaryNew").textContent  =
-        "NEW " + (newAvg != null ? floor2(newAvg).toFixed(2) : "--.--");
+        "NEW " + (newAvg != null ? newAvg.toFixed(2) : "--.--");
       document.getElementById("summaryPlayer").textContent =
         playerName ? ("Player: " + playerName) : "";
 

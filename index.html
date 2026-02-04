@@ -661,6 +661,25 @@
         build();
       });
     })();   
+    
+    (function hydrateFromHash() {
+      const m = location.hash.match(/tsv=([\s\S]*)$/);
+      if (!m) return;
+
+      try {
+        const tsv = decodeURIComponent(m[1]);
+        if (!tsv.trim()) return;
+
+        const ta = document.getElementById("ratingTsv");
+        if (ta) ta.value = tsv;
+
+        build();
+
+        history.replaceState(null, "", location.pathname + location.search);
+      } catch (e) {
+        console.warn("hash parse failed", e);
+      }
+    })();
   </script>
 </body>
 </html>

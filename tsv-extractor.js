@@ -1,644 +1,139 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8" />
-  <title>CHUNITHM Rating Viewer</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #171e2b;
-      color: #f7f7ff;
-      margin: 0;
-      padding: 16px;
-      box-sizing: border-box;
-    }
-    h1, h2, h3 { margin: 0.2em 0; }
-    .layout {
-      display: grid;
-      grid-template-columns: minmax(260px, 320px) 1fr;
-      gap: 16px;
-    }
-    @media (max-width: 960px) {
-      .layout { grid-template-columns: 1fr; }
-    }
-    .panel {
-      background: #1f2838;
-      border-radius: 12px;
-      padding: 12px 14px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-    }
-    label {
-      font-size: 12px;
-      opacity: 0.8;
-      display: block;
-      margin-bottom: 4px;
-    }
-    textarea {
-      width: 100%;
-      min-height: 140px;
-      background: #111827;
-      color: #e5e7eb;
-      border-radius: 8px;
-      border: 1px solid #374151;
-      padding: 8px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-      font-size: 11px;
-      box-sizing: border-box;
-      resize: vertical;
-    }
-    input[type="text"] {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 6px 8px;
-      border-radius: 6px;
-      border: 1px solid #374151;
-      background: #111827;
-      color: #e5e7eb;
-      font-size: 13px;
-      margin-bottom: 8px;
-    }
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 6px 12px;
-      border-radius: 999px;
-      border: none;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 13px;
-      background: linear-gradient(135deg, #4f46e5, #ec4899);
-      color: white;
-      margin-top: 8px;
-    }
-    .btn:active { transform: translateY(1px); }
-
-    .summary-bar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: baseline;
-      margin-bottom: 8px;
-    }
-    .summary-main {
-      font-size: 24px;
-      font-weight: 700;
-    }
-    .summary-chip {
-      font-size: 13px;
-      background: rgba(15,23,42,0.8);
-      border-radius: 999px;
-      padding: 3px 10px;
-      border: 1px solid rgba(148,163,184,0.5);
-    }
-    .columns {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-    @media (max-width: 960px) {
-      .columns { grid-template-columns: 1fr; }
-    }
-    .section-title {
-      font-size: 14px;
-      font-weight: 600;
-      margin-bottom: 6px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid rgba(148,163,184,0.4);
-      padding-bottom: 2px;
-    }
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-      gap: 10px;
-    }
-    /* ふだんはレスポンシブのまま */
-    #outputPanel {
-      max-width: 100%;
-    }
-
-    /* キャプチャ時だけ固定幅で横に広げる */
-    body.capture-mode #outputPanel {
-      width: var(--capture-width, 1700px); /* ← デフォルト1700px。JSから上書き */
-      max-width: none;
-      margin: 0 auto;    /* ついでに中央寄せ */
-    }
-
-    body.capture-mode .cards {
-      grid-template-columns: repeat(3, minmax(240px, 1fr));
-    }
-    .card {
-      background: #020617;
-      border-radius: 10px;
-      padding: 8px;
-      display: grid;
-      grid-template-columns: 74px 1fr;
-      gap: 8px;
-      border: 1px solid rgba(148,163,184,0.25);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-    }
-    .thumb {
-      border-radius: 8px;
-      overflow: hidden;
-      width: 74px;
-      height: 74px;
-      background: linear-gradient(135deg,#0ea5e9,#6366f1);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 10px;
-      text-align: center;
-      padding: 4px;
-      box-sizing: border-box;
-      color: rgba(15,23,42,0.9);
-      font-weight: 700;
-    }
-    .thumb img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-    .card-main {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .card-title-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 6px;
-      align-items: baseline;
-    }
-    .card-title {
-      font-size: 11px;
-      font-weight: 600;
-      line-height: 1.2;
-    }
-    .card-rank {
-      font-size: 10px;
-      opacity: 0.8;
-    }
-    .card-badges {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-      margin-top: 2px;
-    }
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 999px;
-      padding: 1px 6px;
-      font-size: 9px;
-      font-weight: 600;
-      border: 1px solid rgba(248,250,252,0.35);
-      gap: 2px;
-    }
-    .badge-const {
-      background: rgba(56,189,248,0.15);
-      border-color: rgba(56,189,248,0.8);
-    }
-    .badge-rating {
-      background: rgba(244,114,182,0.15);
-      border-color: rgba(244,114,182,0.8);
-    }
-    .badge-score {
-      background: rgba(52,211,153,0.08);
-      border-color: rgba(52,211,153,0.7);
-    }
-    .empty-hint {
-      font-size: 12px;
-      opacity: 0.7;
-      margin-top: 4px;
-    }
-    .error {
-      color: #fecaca;
-      font-size: 12px;
-      margin-top: 4px;
-    }
-  </style>
-
-  <!-- 画像キャプチャ用 -->
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-</head>
-<body>
-  <h1>CHUNITHM ベスト枠 / 新曲枠 レートビューア</h1>
-  <p style="font-size:12px;opacity:0.8;margin-bottom:12px;">
-    抜き出した TSV と、idx ベースの定数表 TSV を貼って「Generate」を押すと、BEST30 / NEW20 のレート表を生成します。
-  </p>
-
-  <div class="layout">
-    <!-- 左：入力 -->
-    <div class="panel">
-      <h2 style="font-size:16px;margin-bottom:8px;">入力</h2>
-      <label>Player Name（任意）</label>
-      <input id="playerName" type="text" placeholder="せか 等" />
-
-      <label style="display:flex;align-items:center;gap:6px;margin:4px 0 8px;">
-        <input type="checkbox" id="showId" />
-        <span style="font-size:12px;opacity:0.8;">ID（譜面ID）を表示する</span>
-      </label>
-
-      <label>レーティング対象 TSV（frame / title / diff / score / idx）</label>
-      <textarea id="ratingTsv" placeholder="frame&#9;title&#9;diff&#9;score&#9;idx&#10;BEST&#9;U&amp;iVERSE ..."></textarea>
-
-      <label>定数表 TSV（idx / title / diff / const / imageUrl ...）</label>
-      <textarea id="constTsv" placeholder="idx&#9;title&#9;diff&#9;const&#9;imageUrl&#10;0&#9;曲名&#9;MAS&#9;14.4&#9;https://...webp"></textarea>
-
-      <div>
-        <button class="btn" id="generateBtn">Generate</button>
-        <button class="btn" id="saveImageBtn" style="margin-left:4px;background:#10b981;">
-          レート表を画像として保存
-        </button>
-      </div>
-
-      <div id="loadingIndicator"
-          style="display:none;font-size:12px;opacity:0.8;margin-top:4px;">
-        定数表を読み込み中です…
-      </div>
-
-      <div id="errorBox" class="error"></div>
-      <p class="empty-hint">
-        ※ Sheets から TSV をコピーするときは、1 行目をヘッダー付きのまま貼ってOKです。<br/>
-        ※ imageUrl 列があればサムネ画像、無ければプレースホルダカラーになります。
-      </p>
-    </div>
-
-    <!-- 右：出力 -->
-    <div class="panel" id="outputPanel">
-      <div class="summary-bar" id="summaryBar">
-        <div class="summary-main" id="summaryRating">Rating --.--</div>
-        <div class="summary-chip" id="summaryBest">BEST --.--</div>
-        <div class="summary-chip" id="summaryNew">NEW --.--</div>
-        <div class="summary-chip" id="summaryPlayer"></div>
-      </div>
-
-      <div class="columns">
-        <div>
-          <div class="section-title">
-            <span>Best 30 Songs</span>
-            <span id="countBest" style="font-size:11px;opacity:0.7;">0 song</span>
-          </div>
-          <div class="cards" id="bestCards"></div>
-          <div class="empty-hint" id="bestHint">
-            TSV を貼って Generate を押すと、BEST 曲が表示されます。
-          </div>
-        </div>
-        <div>
-          <div class="section-title">
-            <span>New 20 Songs</span>
-            <span id="countNew" style="font-size:11px;opacity:0.7;">0 song</span>
-          </div>
-          <div class="cards" id="newCards"></div>
-          <div class="empty-hint" id="newHint">
-            TSV を貼って Generate を押すと、新曲枠が表示されます。
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    // 単曲レート計算（CHUNITHM NEW / VERSE 相当）
-    function calcSingleRate(constant, score) {
-      const rawC = Number(constant);
-
-      // 定数は0.1刻み — 誤差吸収
-      const c = Math.round(rawC * 10) / 10;
-
-      const s = Number(score);
-      if (!isFinite(c) || !isFinite(s)) return null;
-
-      let r = 0;
-
-      if (s < 500000) {
-        r = 0;
-      } else if (s < 800000) {
-        r = (c - 5) / 2 * (s - 500000) / 300000;
-      } else if (s < 900000) {
-        r = (c - 5) / 2 + (c - 5) / 2 * (s - 800000) / 100000;
-      } else if (s < 925000) {
-        r = c - 5.0;
-      } else if (s < 950000) {
-        r = c - 3.34;
-      } else if (s < 975000) {
-        r = (c - 1.67) + (s - 950000) / 15000;
-      } else if (s < 1000000) {
-        r = c + (s - 975000) / 25000;
-      } else if (s < 1005000) {
-        r = c + 1.0 + (s - 1000000) / 10000;
-      } else if (s < 1007500) {
-        r = c + 1.5 + (s - 1005000) / 5000;
-      } else if (s < 1009000) {
-        r = c + 2.0 + (s - 1007500) / 10000;
-      } else {
-        // SSS+ は「必ず譜面定数 + 2.15」を誤差ゼロで返す
-        r = (Math.floor(c * 100) + 215) / 100;
-      }
-
-      // 最終丸め — 0.00025単位に切り捨て
-      const EPS = 1e-9;
-      return Math.floor((r + EPS) * 4000) / 4000;
-    }
-
-    function floor2(v) {
-      const EPS = 1e-9;
-      return Math.floor((v + EPS) * 100) / 100;
-    }
-
-    // TSV/CSV をパース（タブ or カンマ両対応）
-    function parseTsv(text) {
-      const lines = text.trim().split(/\r?\n/).filter(l => l.trim() !== "");
-      if (!lines.length) return [];
-
-      const first = lines[0];
-      const sep = first.includes("\t") ? "\t" : (first.includes(",") ? "," : "\t");
-
-      const rawHeader = first.split(sep);
-      const header = rawHeader.map(h => h.trim());
-
-      return lines.slice(1).map(line => {
-        const cols = line.split(sep);
-        const row = {};
-        header.forEach((h, i) => {
-          const v = (cols[i] ?? "").trim();
-          row[h] = v;
-          row[h.toLowerCase()] = v;
-        });
-        return row;
-      });
-    }
-
-    const CONST_SHEET_URL = "https://script.google.com/macros/s/AKfycbzFCBBjjHSG8REzEpSlw48SmAbrRNMnjMPHg3fd0bF7QA1_A3xD6vApLFy4M5QVTX7xDA/exec";
-
-    async function build() {
-      const ratingText = document.getElementById("ratingTsv").value;
-      // const constText   = document.getElementById("constTsv").value;
-      const playerName  = document.getElementById("playerName").value.trim();
-      const showId      = document.getElementById("showId").checked;
-      const errorBox    = document.getElementById("errorBox");
-      errorBox.textContent = "";
-
-      if (!ratingText.trim()) {
-        errorBox.textContent = "レーティング対象 TSV を貼り付けてください。";
-        return;
-      }
-      
-      // ★★★ Google Sheets から直接定数TSVを取得する ★★★
-      let constText = "";
-
-      const loading = document.getElementById("loadingIndicator");
-      const generateBtnEl = document.getElementById("generateBtn");
-      const saveImageBtnEl = document.getElementById("saveImageBtn");
-
-      // 読み込み中表示 & ボタン無効化
-      loading.style.display = "inline";
-      generateBtnEl.disabled = true;
-      saveImageBtnEl.disabled = true;
-
-      try {
-        const res = await fetch(CONST_SHEET_URL);
-        constText = await res.text();
-      } catch (e) {
-        console.error(e);
-        errorBox.textContent = "定数表スプレッドシートの読み込みに失敗しました。";
-        return;
-      } finally {
-        // 読み込み完了したら戻す
-        loading.style.display = "none";
-        generateBtnEl.disabled = false;
-        saveImageBtnEl.disabled = false;
-      }
-
-      // if (!constText.trim()) {
-      //   errorBox.textContent = "定数表 TSV を貼り付けてください。";
-      //   return;
-      // }
-
-      let ratingRows, constRows;
-      try {
-        ratingRows = parseTsv(ratingText);
-        constRows  = parseTsv(constText);
-      } catch (e) {
-        console.error(e);
-        errorBox.textContent = "TSV のパースに失敗しました。ヘッダー行を含めて貼り付けているか確認してください。";
-        return;
-      }
-
-      // idx+diff / idx で定数を lookup
-      const constMap = new Map();
-      for (const row of constRows) {
-        const idx = String(row.idx ?? row["idx"] ?? row["id"] ?? "").trim();
-        if (!idx) continue;
-
-        const diffRaw = (row.diff || row["diff"] || "").trim();
-        const diffKey = diffRaw ? diffRaw.toUpperCase() : "";
-
-        const info = {
-          constValue: row.const ?? row["const"] ?? row.constant ?? row["constant"] ?? "",
-          imageUrl:   row.imageUrl ?? row["imageUrl"] ?? row.image ?? row["image"] ?? ""
-        };
-
-        if (diffKey) {
-          constMap.set(idx + "|" + diffKey, info);
-        }
-        if (!constMap.has(idx)) {
-          constMap.set(idx, info);
-        }
-      }
-
-      // ratingRows → Song 配列
-      const songs = [];
-      for (const row of ratingRows) {
-        const frame = (row.frame || row["frame"] || row.Frame || "").toUpperCase();
-        if (!frame) continue;
-
-        const idx     = String(row.idx ?? row["idx"] ?? row.ID ?? "").trim();
-        const diffRaw = (row.diff || row["diff"] || row.Diff || "").trim();
-        const diffKey = diffRaw ? diffRaw.toUpperCase() : "";
-
-        const base =
-          (idx && diffKey ? constMap.get(idx + "|" + diffKey) : null) ||
-          (idx ? constMap.get(idx) : null) ||
-          {};
-
-        const constStr    = base.constValue;
-        const constValue  = Number(constStr);
-        const score       = Number(row.score ?? row["score"] ?? row.Score ?? 0);
-        const rateRaw     = isFinite(constValue) ? calcSingleRate(constValue, score) : null;
-
-        // ★ 1/4000 刻みの整数にして保持（誤差ゼロ）
-        const units4000   = (rateRaw != null) ? Math.round(rateRaw * 4000) : null;
-
-        const rateDisplay = rateRaw != null ? floor2(rateRaw) : null;
-
-        songs.push({
-          frame,
-          title: row.title || row["title"] || row.Title || "",
-          diff: diffRaw,
-          score,
-          idx,
-          constValue: isFinite(constValue) ? constValue : null,
-          imageUrl: base.imageUrl || "",
-          rateRaw,
-          units4000,      // ★追加
-          rateDisplay
-        });
-      }
-
-      const bestSongs = songs.filter(s => s.frame === "BEST");
-      const newSongs  = songs.filter(s => s.frame === "NEW");
-
-      function sumPerSong2dp(arr) {
-        // 各曲を2桁切り捨てした値で合計
-        return arr
-          .map(s => (s.rateRaw != null ? floor2(s.rateRaw) : null))
-          .filter(v => v != null)
-          .reduce((a, b) => a + b, 0);
-      }
-
-      const bestSum2 = sumPerSong2dp(bestSongs);
-      const newSum2  = sumPerSong2dp(newSongs);
-
-      // BEST/NEW/ALL は「2桁化した合計」を分母で割って、最後も2桁切り捨て
-      const bestAvg = floor2(bestSum2 / 30);
-      const newAvg  = floor2(newSum2 / 20);
-      const allAvg  = floor2((bestSum2 + newSum2) / 50);
-
-      // サマリ表示（表示時も切り捨て）
-      document.getElementById("summaryRating").textContent =
-        "Rating " + (allAvg != null ? allAvg.toFixed(2) : "--.--");
-      document.getElementById("summaryBest").textContent =
-        "BEST " + (bestAvg != null ? bestAvg.toFixed(2) : "--.--");
-      document.getElementById("summaryNew").textContent  =
-        "NEW " + (newAvg != null ? newAvg.toFixed(2) : "--.--");
-      document.getElementById("summaryPlayer").textContent =
-        playerName ? ("Player: " + playerName) : "";
-
-      document.getElementById("countBest").textContent =
-        bestSongs.length + " song" + (bestSongs.length !== 1 ? "s" : "");
-      document.getElementById("countNew").textContent  =
-        newSongs.length + " song" + (newSongs.length !== 1 ? "s" : "");
-
-      const bestCardsEl = document.getElementById("bestCards");
-      const newCardsEl  = document.getElementById("newCards");
-      bestCardsEl.innerHTML = "";
-      newCardsEl.innerHTML  = "";
-
-      document.getElementById("bestHint").style.display = bestSongs.length ? "none" : "block";
-      document.getElementById("newHint").style.display  = newSongs.length ? "none" : "block";
-
-      function createCard(song, index) {
-        const card = document.createElement("div");
-        card.className = "card";
-
-        const thumb = document.createElement("div");
-        thumb.className = "thumb";
-        if (song.imageUrl) {
-          const img = document.createElement("img");
-          img.src = song.imageUrl;
-          img.alt = song.title;
-          thumb.appendChild(img);
-        } else {
-          thumb.textContent = "#" + (index + 1);
-        }
-
-        const main = document.createElement("div");
-        main.className = "card-main";
-
-        const titleRow = document.createElement("div");
-        titleRow.className = "card-title-row";
-
-        const titleEl = document.createElement("div");
-        titleEl.className = "card-title";
-        titleEl.textContent = song.title;
-
-        const rankEl = document.createElement("div");
-        rankEl.className = "card-rank";
-        rankEl.textContent = song.diff + (showId && song.idx ? " · ID " + song.idx : "");
-
-        titleRow.appendChild(titleEl);
-        titleRow.appendChild(rankEl);
-
-        const badges = document.createElement("div");
-        badges.className = "card-badges";
-
-        const constBadge = document.createElement("span");
-        constBadge.className = "badge badge-const";
-        constBadge.textContent = "CONST " + (song.constValue != null ? song.constValue.toFixed(1) : "--");
-        badges.appendChild(constBadge);
-
-        const ratingBadge = document.createElement("span");
-        ratingBadge.className = "badge badge-rating";
-        ratingBadge.textContent = "RATING " + (song.rateDisplay != null ? song.rateDisplay.toFixed(2) : "--.--");
-        badges.appendChild(ratingBadge);
-
-        const scoreBadge = document.createElement("span");
-        scoreBadge.className = "badge badge-score";
-        const scoreStr = song.score ? song.score.toLocaleString("ja-JP") : "--";
-        scoreBadge.textContent = "SCORE " + scoreStr;
-        badges.appendChild(scoreBadge);
-
-        main.appendChild(titleRow);
-        main.appendChild(badges);
-
-        card.appendChild(thumb);
-        card.appendChild(main);
-        return card;
-      }
-
-      bestSongs.forEach((s, i) => bestCardsEl.appendChild(createCard(s, i)));
-      newSongs.forEach((s, i) => newCardsEl.appendChild(createCard(s, i)));
-    }
-
-    // ボタン紐付け
-    document.getElementById("generateBtn").addEventListener("click", () => {
-      try {
-        build();
-      } catch (e) {
-        console.error(e);
-        alert("Generate 中にエラーが出ています（Console を確認してください）。");
+// tsv-extractor.js
+(() => {
+  const DIFF = {0:"BAS",1:"ADV",2:"EXP",3:"MAS",4:"ULT"};
+  const BASE = location.origin + "/chuni-mobile/html/mobile/home/playerData/";
+  const PAGES = [
+    { frame: "BEST", path: "ratingDetailBest/" },
+    { frame: "NEW",  path: "ratingDetailRecent/" }
+  ];
+
+  function scrape(doc, frame) {
+    const rows = [];
+    doc.querySelectorAll("div.musiclist_box").forEach(box => {
+      const titleEl = box.querySelector(".music_title");
+      const title = titleEl ? titleEl.textContent.trim() : "";
+
+      const scoreEl = box.querySelector(".play_musicdata_highscore .text_b");
+      const score = scoreEl ? scoreEl.textContent.trim().replace(/,/g, "") : "";
+
+      const form = box.closest("form");
+      const idxInput  = form ? form.querySelector("input[name='idx']")  : null;
+      const diffInput = form ? form.querySelector("input[name='diff']") : null;
+      const idx    = idxInput && idxInput.value ? idxInput.value : "";
+      const diffId = diffInput && diffInput.value ? diffInput.value : "";
+      const diff   = DIFF.hasOwnProperty(diffId) ? DIFF[diffId] : diffId;
+
+      if (title && score) {
+        rows.push({ frame, title, diff, score, idx });
       }
     });
+    return rows;
+  }
 
-    document.getElementById("saveImageBtn").addEventListener("click", async () => {
-      const target = document.getElementById("outputPanel");
-      if (!target) {
-        alert("outputPanel が見つかりません。");
+  function fetchDoc(url) {
+    return fetch(url, { credentials: "include" })
+      .then(res => res.text())
+      .then(html => new DOMParser().parseFromString(html, "text/html"));
+  }
+
+  // スマホ対応の TSV 表示オーバーレイを表示
+  function showOverlay(tsv) {
+    const old = document.getElementById("chuni-tsv-overlay");
+    if (old) old.remove();
+
+    const wrap = document.createElement("div");
+    wrap.id = "chuni-tsv-overlay";
+    Object.assign(wrap.style,{
+      position:"fixed",inset:"0",
+      background:"rgba(0,0,0,0.85)",
+      zIndex:"99999",
+      display:"flex",flexDirection:"column",
+      padding:"12px",boxSizing:"border-box"
+    });
+
+    const info = document.createElement("div");
+    info.textContent = "長押し → 全選択 → コピー";
+    Object.assign(info.style,{
+      color:"#fff",fontSize:"12px",marginBottom:"8px"
+    });
+
+    const ta = document.createElement("textarea");
+    ta.value = tsv;
+    Object.assign(ta.style,{
+      flex:"1",width:"100%",color:"#fff",
+      background:"#111827",
+      fontSize:"11px",
+      border:"1px solid #4b5563",
+      borderRadius:"6px"
+    });
+
+    const btn = document.createElement("button");
+    btn.textContent = "閉じる";
+    Object.assign(btn.style,{
+      marginTop:"8px",alignSelf:"flex-end",
+      padding:"6px 12px",
+      borderRadius:"999px",border:"none",
+      background:"#4f46e5",color:"#fff"
+    });
+    btn.onclick = () => wrap.remove();
+
+    wrap.appendChild(info);
+    wrap.appendChild(ta);
+    wrap.appendChild(btn);
+    document.body.appendChild(wrap);
+
+    ta.focus();
+    ta.select();
+  }
+
+  if (location.host.indexOf("chunithm-net") === -1) {
+    alert("CHUNITHM-NET 上で実行してください！");
+    return;
+  }
+
+  Promise.all(PAGES.map(p => fetchDoc(BASE + p.path).then(doc => scrape(doc, p.frame))))
+    .then(arr => {
+      const results = arr.flat();
+      if (!results.length) {
+        alert("データを取得できませんでした");
         return;
       }
 
-      // ★ 画面幅で「PC or スマホ」をざっくり判定
-      const isMobile = window.innerWidth <= 768;
+      const header = ["frame","title","diff","score","idx"];
+      const lines = [header.join("\t")].concat(
+        results.map(r => [r.frame,r.title,r.diff,r.score,r.idx].join("\t"))
+      );
 
-      // ★ モバイルはちょっと狭め（例: 1100px）、PCは広め（1700px）
-      const captureWidth = isMobile ? "1100px" : "1700px";
-      document.body.style.setProperty("--capture-width", captureWidth);
+      const tsv = lines.join("\n");
+      (function sendToViewer(tsv) {
+        const RECEIVER_URL = "https://sekasans.github.io/sekarate/";
+        const RECEIVER_ORIGIN = "https://sekasans.github.io";
 
-      // キャプチャ用レイアウトに切り替え
-      document.body.classList.add("capture-mode");
-      await new Promise(r => setTimeout(r, 50));  // レイアウト反映待ち
+        const w = window.open(RECEIVER_URL, "_blank");
+        if (!w) {
+          alert("ポップアップがブロックされました");
+          return;
+        }
 
-      const canvas = await html2canvas(target, {
-        backgroundColor: "#171e2b",
-        scale: 2,
-        useCORS: true
-      });
+        // 送信を数回リトライ（Safari/低速回線対策）
+        let tries = 0;
+        const maxTries = 12;       // 12回まで
+        const intervalMs = 300;    // 0.3秒おき
 
-      // 元に戻す
-      document.body.classList.remove("capture-mode");
-      document.body.style.removeProperty("--capture-width");
+        const timer = setInterval(() => {
+          tries++;
+          try {
+            w.postMessage({ tsv }, RECEIVER_ORIGIN);
+          } catch (e) {
+            // 開いた直後は例外になることがあるがリトライ継続
+            console.warn("postMessage retry", tries, e);
+          }
 
-      const link = document.createElement("a");
-      link.download = "chunithm_rating.png";
-      link.href = canvas.toDataURL("image/png");
-      link.click();
-    });
-  </script>
-</body>
-</html>
+          if (tries >= maxTries) clearInterval(timer);
+        }, intervalMs);
+      })(tsv);
+      showOverlay(tsv);
+      console.log(tsv);
+    })
+    .catch(err => alert("取得エラー: " + err));
+})();

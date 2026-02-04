@@ -639,6 +639,28 @@
       link.href = canvas.toDataURL("image/png");
       link.click();
     });
+
+    // ===== Bookmarklet から TSV を受け取って自動生成 =====
+    (() => {
+      const allowedOrigins = new Set([
+        "https://new.chunithm-net.com",
+        "https://chunithm-net.com"
+      ]);
+
+      window.addEventListener("message", (event) => {
+        if (!allowedOrigins.has(event.origin)) return;
+
+        const data = event.data;
+        if (!data || typeof data !== "object") return;
+        if (typeof data.tsv !== "string" || !data.tsv.trim()) return;
+
+        const ta = document.getElementById("ratingTsv");
+        if (ta) ta.value = data.tsv;
+
+        // 自動生成
+        build();
+      });
+    })();   
   </script>
 </body>
 </html>

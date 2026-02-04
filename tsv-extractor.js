@@ -7,6 +7,9 @@
     { frame: "NEW",  path: "ratingDetailRecent/" }
   ];
 
+  const RECEIVER_URL = "https://sekasans.github.io/sekarate/";
+  const RECEIVER_ORIGIN = "https://sekasans.github.io";
+
   function scrape(doc, frame) {
     const rows = [];
     doc.querySelectorAll("div.musiclist_box").forEach(box => {
@@ -21,11 +24,9 @@
       const diffInput = form ? form.querySelector("input[name='diff']") : null;
       const idx    = idxInput && idxInput.value ? idxInput.value : "";
       const diffId = diffInput && diffInput.value ? diffInput.value : "";
-      const diff   = DIFF.hasOwnProperty(diffId) ? DIFF[diffId] : diffId;
+      const diff   = Object.prototype.hasOwnProperty.call(DIFF, diffId) ? DIFF[diffId] : diffId;
 
-      if (title && score) {
-        rows.push({ frame, title, diff, score, idx });
-      }
+      if (title && score) rows.push({ frame, title, diff, score, idx });
     });
     return rows;
   }
@@ -36,7 +37,15 @@
       .then(html => new DOMParser().parseFromString(html, "text/html"));
   }
 
-  // スマホ対応の TSV 表示オーバーレイを表示
+  function buildTsv(results) {
+    const header = ["frame","title","diff","score","idx"];
+    const lines = [header.join("\t")].concat(
+      results.map(r => [r.frame, r.title, r.diff, r.score, r.idx].join("\t"))
+    );
+    return lines.join("\n");
+  }
+
+  // スマホ用の TSV 表示（保険：送信できなくてもコピペ可能）
   function showOverlay(tsv) {
     const old = document.getElementById("chuni-tsv-overlay");
     if (old) old.remove();
@@ -52,10 +61,8 @@
     });
 
     const info = document.createElement("div");
-    info.textContent = "長押し → 全選択 → コピー";
-    Object.assign(info.style,{
-      color:"#fff",fontSize:"12px",marginBottom:"8px"
-    });
+    info.textContent = "（送信できない場合）長押し → 全選択 → コピー";
+    Object.assign(info.style,{ color:"#fff",fontSize:"12px",marginBottom:"8px" });
 
     const ta = document.createElement("textarea");
     ta.value = tsv;
@@ -86,11 +93,20 @@
     ta.select();
   }
 
+  // ===== ここが超重要：同期で confirm→open =====
   if (location.host.indexOf("chunithm-net") === -1) {
     alert("CHUNITHM-NET 上で実行してください！");
     return;
   }
 
+  // 先に開く（iOS対策）
+  let w = null;
+  if (confirm("レートビューアを開いてTSVを送信しますか？\n（送信できない場合もTSVは表示します）")) {
+    w = window.open(RECEIVER_URL, "_blank");
+    if (!w) alert("ポップアップがブロックされました（設定で許可してください）");
+  }
+
+  // ここから非同期で取得してOK
   Promise.all(PAGES.map(p => fetchDoc(BASE + p.path).then(doc => scrape(doc, p.frame))))
     .then(arr => {
       const results = arr.flat();
@@ -99,39 +115,23 @@
         return;
       }
 
-      const header = ["frame","title","diff","score","idx"];
-      const lines = [header.join("\t")].concat(
-        results.map(r => [r.frame,r.title,r.diff,r.score,r.idx].join("\t"))
-      );
+      const tsv = buildTsv(results);
 
-      const tsv = lines.join("\n");
-      (function sendToViewer(tsv) {
-        const RECEIVER_URL = "https://sekasans.github.io/sekarate/";
-        const RECEIVER_ORIGIN = "https://sekasans.github.io";
-
-        const w = window.open(RECEIVER_URL, "_blank");
-        if (!w) {
-          alert("ポップアップがブロックされました");
-          return;
-        }
-
-        // 送信を数回リトライ（Safari/低速回線対策）
+      // 送信（開けてる時だけ）
+      if (w) {
+        // リトライ送信（Viewerの読み込み待ち用）
         let tries = 0;
-        const maxTries = 12;       // 12回まで
-        const intervalMs = 300;    // 0.3秒おき
+        const maxTries = 15;     // 15回
+        const intervalMs = 300;  // 0.3秒おき
 
         const timer = setInterval(() => {
           tries++;
-          try {
-            w.postMessage({ tsv }, RECEIVER_ORIGIN);
-          } catch (e) {
-            // 開いた直後は例外になることがあるがリトライ継続
-            console.warn("postMessage retry", tries, e);
-          }
-
+          try { w.postMessage({ tsv }, RECEIVER_ORIGIN); } catch (e) {}
           if (tries >= maxTries) clearInterval(timer);
         }, intervalMs);
-      })(tsv);
+      }
+
+      // 保険として必ず表示
       showOverlay(tsv);
       console.log(tsv);
     })

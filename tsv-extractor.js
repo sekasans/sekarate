@@ -99,12 +99,12 @@
     return;
   }
 
-  // 先に開く（iOS対策）
-  let w = null;
-  if (confirm("レートビューアを開いてTSVを送信しますか？\n（送信できない場合もTSVは表示します）")) {
-    w = window.open(RECEIVER_URL, "_blank");
-    if (!w) alert("ポップアップがブロックされました（設定で許可してください）");
-  }
+  const doJump = true;
+
+  //const doJump = confirm(
+  //  "レートビューアに移動してTSVを自動入力しますか？\n" +
+  //  "（同一タブで開きます。戻るで戻れます）"
+  //);
 
   // ここから非同期で取得してOK
   Promise.all(PAGES.map(p => fetchDoc(BASE + p.path).then(doc => scrape(doc, p.frame))))
@@ -117,21 +117,13 @@
 
       const tsv = buildTsv(results);
 
-      // 送信（開けてる時だけ）
-      if (w) {
-        // リトライ送信（Viewerの読み込み待ち用）
-        let tries = 0;
-        const maxTries = 15;     // 15回
-        const intervalMs = 300;  // 0.3秒おき
-
-        const timer = setInterval(() => {
-          tries++;
-          try { w.postMessage({ tsv }, RECEIVER_ORIGIN); } catch (e) {}
-          if (tries >= maxTries) clearInterval(timer);
-        }, intervalMs);
+      if (doJump) {
+        const encoded = encodeURIComponent(tsv);
+        location.href = RECEIVER_URL + "#tsv=" + encoded;
+        return;
       }
 
-      // 保険として必ず表示
+      // 送らない場合の保険
       showOverlay(tsv);
       console.log(tsv);
     })

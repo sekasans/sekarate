@@ -1,17 +1,40 @@
 // tsv-extractor.js
 (() => {
   const DIFF = {0:"BAS",1:"ADV",2:"EXP",3:"MAS",4:"ULT"};
+
+  const DIFF_CLASS = {
+    "0": "basic",
+    "1": "advanced",
+    "2": "expert",
+    "3": "master",
+    "4": "ultima"
+  };
+
   const BASE = location.origin + "/chuni-mobile/html/mobile/home/playerData/";
+  const DETAIL_API = location.origin + "/chuni-mobile/html/mobile/record/musicGenre/sendMusicDetail/";
+
   const PAGES = [
     { frame: "BEST", path: "ratingDetailBest/" },
     { frame: "NEW",  path: "ratingDetailRecent/" }
   ];
 
   const RECEIVER_URL = "https://sekasans.github.io/sekarate/";
-  const RECEIVER_ORIGIN = "https://sekasans.github.io";
+
+  function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  function normalizeNumber(s) {
+    return String(s)
+      .replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+      .replace(/[，,]/g, "")
+      .replace(/回/g, "")
+      .trim();
+  }
 
   function scrape(doc, frame) {
     const rows = [];
+
     doc.querySelectorAll("div.musiclist_box").forEach(box => {
       const titleEl = box.querySelector(".music_title");
       const title = titleEl ? titleEl.textContent.trim() : "";
@@ -22,12 +45,26 @@
       const form = box.closest("form");
       const idxInput  = form ? form.querySelector("input[name='idx']")  : null;
       const diffInput = form ? form.querySelector("input[name='diff']") : null;
-      const idx    = idxInput && idxInput.value ? idxInput.value : "";
-      const diffId = diffInput && diffInput.value ? diffInput.value : "";
-      const diff   = Object.prototype.hasOwnProperty.call(DIFF, diffId) ? DIFF[diffId] : diffId;
 
-      if (title && score) rows.push({ frame, title, diff, score, idx });
+      const idx = idxInput && idxInput.value ? idxInput.value : "";
+      const diffId = diffInput && diffInput.value ? diffInput.value : "";
+      const diff = Object.prototype.hasOwnProperty.call(DIFF, diffId)
+        ? DIFF[diffId]
+        : diffId;
+
+      if (title && score) {
+        rows.push({
+          frame,
+          title,
+          diff,
+          diffId,
+          score,
+          idx,
+          playCount: ""
+        });
+      }
     });
+
     return rows;
   }
 
@@ -37,15 +74,190 @@
       .then(html => new DOMParser().parseFromString(html, "text/html"));
   }
 
-  function buildTsv(results) {
-    const header = ["frame","title","diff","score","idx"];
-    const lines = [header.join("\t")].concat(
-      results.map(r => [r.frame, r.title, r.diff, r.score, r.idx].join("\t"))
+  function extractToken(doc) {
+    const tokenInput =
+      doc.querySelector("input[name='token']") ||
+      doc.querySelector("input[name='_token']");
+
+    if (tokenInput && tokenInput.value) {
+      return tokenInput.value;
+    }
+
+    const html = doc.documentElement.innerHTML;
+    const m = html.match(/token['"]?\s*[:=]\s*['"]([a-f0-9]{16,})['"]/i);
+    return m ? m[1] : "";
+  }
+
+  function extractPlayCount(doc, diffId) {
+    const diffClass = DIFF_CLASS[String(diffId)];
+    if (!diffClass) return "";
+
+    // 例:
+    // <div class="w420 music_box bg_master">
+    //   <div class="musicdata_detail_difficulty title_master">MASTER</div>
+    //   ...
+    //   <div class="musicdata_score_title">プレイ回数：</div>
+    //   <div class="musicdata_score_num"><span class="text_b">6回</span></div>
+    // </div>
+    let box = doc.querySelector(".music_box.bg_" + diffClass);
+
+    if (!box) {
+      const titleEl = doc.querySelector(".musicdata_detail_difficulty.title_" + diffClass);
+      box = titleEl ? titleEl.closest(".music_box") : null;
+    }
+
+    if (!box) {
+      console.warn("対象難易度のmusic_boxが見つかりません:", diffId, diffClass);
+      return "";
+    }
+
+    const scoreBlocks = Array.from(box.querySelectorAll(".block_underline"));
+
+    for (const block of scoreBlocks) {
+      const titleEl = block.querySelector(".musicdata_score_title");
+      const numEl = block.querySelector(".musicdata_score_num .text_b, .musicdata_score_num");
+
+      const title = titleEl ? titleEl.textContent.trim() : "";
+
+      if (title.indexOf("プレイ回数") !== -1 && numEl) {
+        return normalizeNumber(numEl.textContent);
+      }
+    }
+
+    // 念のため fallback：対象box内テキストから拾う
+    const text = (box.textContent || "").replace(/\s+/g, " ");
+    const m = text.match(/プレイ回数\s*[：:]\s*([0-9０-９,，]+)\s*回/);
+
+    return m ? normalizeNumber(m[1]) : "";
+  }
+
+  async function fetchPlayCount(row, token) {
+    if (!row.idx || !row.diffId || !token) return "";
+
+    const body = new URLSearchParams();
+    body.set("idx", row.idx);
+    body.set("genre", "99");
+    body.set("diff", row.diffId);
+    body.set("token", token);
+
+    const res = await fetch(DETAIL_API, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: body.toString()
+    });
+
+    const html = await res.text();
+
+    // Rate Limit検知
+    if (
+      html.includes("Error Code: 200001") ||
+      html.includes("短時間の連続アクセス")
+    ) {
+      throw new Error("Rate limited (200001)");
+    }
+
+    if (
+      html.includes("アクセスが集中") ||
+      html.includes("エラー") ||
+      html.includes("Error Code")
+    ) {
+      console.warn("詳細取得HTML異常:", row.title, row.diff, row.idx);
+      console.log(html);
+    }
+
+    const doc = new DOMParser().parseFromString(html, "text/html");
+
+    const playCount = extractPlayCount(doc, row.diffId);
+
+    if (!playCount) {
+      console.warn(
+        "playCount取得失敗:",
+        row.title,
+        row.diff,
+        row.idx
+      );
+
+      console.log(
+        "music_box classes:",
+        [...doc.querySelectorAll(".music_box")].map(x => x.className)
+      );
+
+      console.log(doc.body ? doc.body.innerHTML : html);
+    }
+
+    return playCount;
+  }
+
+  async function hydratePlayCounts(rows, token) {
+    const CONCURRENCY = 1;
+    const BATCH_SLEEP = 0;
+
+    let completed = 0;
+
+    const start = performance.now();
+    showProgressOverlay(rows.length);
+
+    for (let i = 0; i < rows.length; i += CONCURRENCY) {
+      const chunk = rows.slice(i, i + CONCURRENCY);
+
+      await Promise.all(
+        chunk.map(async row => {
+          try {
+            row.playCount = await fetchPlayCount(row, token);
+          } catch (e) {
+            console.warn(
+              "playCount取得失敗:",
+              row.title,
+              row.diff,
+              e.message || e
+            );
+
+            row.playCount = "";
+          }
+
+          completed++;
+
+          console.log(
+            `[${completed}/${rows.length}] ${row.title} ${row.diff} playCount=${row.playCount}`
+          );
+          updateProgressOverlay(completed, rows.length);
+        })
+      );
+
+      if (i + CONCURRENCY < rows.length) {
+        await sleep(BATCH_SLEEP);
+      }
+    }
+
+    hideProgressOverlay();
+
+    console.log(
+      `playCount取得完了: ${Math.round(performance.now() - start)}ms`
     );
+
+    return rows;
+  }
+
+  function buildTsv(results) {
+    const header = ["frame","title","diff","score","idx","playCount"];
+
+    const lines = [header.join("\t")].concat(
+      results.map(r => [
+        r.frame,
+        r.title,
+        r.diff,
+        r.score,
+        r.idx,
+        r.playCount || ""
+      ].join("\t"))
+    );
+
     return lines.join("\n");
   }
 
-  // スマホ用の TSV 表示（保険：送信できなくてもコピペ可能）
   function showOverlay(tsv) {
     const old = document.getElementById("chuni-tsv-overlay");
     if (old) old.remove();
@@ -93,7 +305,56 @@
     ta.select();
   }
 
-  // ===== ここが超重要：同期で confirm→open =====
+  function showProgressOverlay(total) {
+    const old = document.getElementById("chuni-progress-overlay");
+    if (old) old.remove();
+
+    const wrap = document.createElement("div");
+    wrap.id = "chuni-progress-overlay";
+
+    Object.assign(wrap.style, {
+      position: "fixed",
+      inset: "0",
+      background: "rgba(15,23,42,0.65)",
+      zIndex: "2147483647",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center"
+    });
+
+    wrap.innerHTML = `
+      <div style="
+        background:#111827;
+        color:white;
+        padding:28px 36px;
+        font-size:24px;
+        font-weight:bold;
+        border-radius:16px;
+        border:1px solid rgba(255,255,255,0.12);
+        box-shadow:0 12px 40px rgba(0,0,0,0.35);
+      ">
+        <div style="margin-bottom:8px;">プレイ回数取得中...</div>
+        <div id="chuni-progress-text">
+          0 / ${total}
+        </div>
+      </div>
+    `;
+
+    document.documentElement.appendChild(wrap);
+  }
+
+  function updateProgressOverlay(done, total) {
+    const el = document.getElementById("chuni-progress-text");
+    if (el) {
+      el.textContent = `${done} / ${total} (${Math.floor(done * 100 / total)}%)`;
+    }
+  }
+
+  function hideProgressOverlay() {
+    const el = document.getElementById("chuni-progress-overlay");
+    if (el) el.remove();
+  }
+
   if (location.host.indexOf("chunithm-net") === -1) {
     alert("CHUNITHM-NET 上で実行してください！");
     return;
@@ -101,18 +362,26 @@
 
   const doJump = true;
 
-  //const doJump = confirm(
-  //  "レートビューアに移動してTSVを自動入力しますか？\n" +
-  //  "（同一タブで開きます。戻るで戻れます）"
-  //);
-
-  // ここから非同期で取得してOK
-  Promise.all(PAGES.map(p => fetchDoc(BASE + p.path).then(doc => scrape(doc, p.frame))))
-    .then(arr => {
+  Promise.all(
+    PAGES.map(p =>
+      fetchDoc(BASE + p.path).then(doc => scrape(doc, p.frame))
+    )
+  )
+    .then(async arr => {
       const results = arr.flat();
+
       if (!results.length) {
         alert("データを取得できませんでした");
         return;
+      }
+
+      const firstDoc = await fetchDoc(BASE + PAGES[0].path);
+      const token = extractToken(firstDoc);
+
+      if (!token) {
+        alert("tokenを取得できませんでした。プレイ回数なしでTSVを出力します。");
+      } else {
+        await hydratePlayCounts(results, token);
       }
 
       const tsv = buildTsv(results);
@@ -123,7 +392,6 @@
         return;
       }
 
-      // 送らない場合の保険
       showOverlay(tsv);
       console.log(tsv);
     })

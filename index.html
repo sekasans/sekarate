@@ -296,11 +296,12 @@
     }
 
     .stat-label {
-      font-size: 14px;
+      font-size: 9px;
       font-weight: 950;
       line-height: 1;
       opacity: 0.98;
       flex: 0 0 auto;
+      min-width: 36px;
     }
 
     .stat-value {
@@ -308,16 +309,18 @@
       font-weight: 950;
       line-height: 1;
       white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 100%;
+      overflow: visible;
+      text-overflow: clip;
+      max-width: none;
       text-align: left;
       flex: 0 1 auto;
     }
 
     .stat-score .stat-value {
       font-size: 24px;
-      letter-spacing: -0.03em;
+      letter-spacing: -0.055em;
+      transform: none;
+      transform-origin: initial;
     }
 
     .play-dot {
@@ -394,26 +397,26 @@
         padding: 6px;
         border-radius: 12px;
       }
-      .top-stat-card {
+      body:not(.capture-mode) .top-stat-card {
         min-height: 44px;
         border-radius: 9px;
         padding: 5px 4px;
       }
 
-      .top-stat-label {
+      body:not(.capture-mode) .top-stat-label {
         font-size: 6px;
         margin-bottom: 3px;
       }
 
-      .top-stat-value {
+      body:not(.capture-mode) .top-stat-value {
         font-size: 12px;
       }
 
-      .top-stat-rating .top-stat-value {
+      body:not(.capture-mode) .top-stat-rating .top-stat-value {
         font-size: 16px;
       }
 
-      .top-stat-date .top-stat-value {
+      body:not(.capture-mode) .top-stat-date .top-stat-value {
         font-size: 8px;
       }
       .cards {
@@ -439,13 +442,20 @@
         line-height: 1;
       }
       .stat-label {
-        font-size: 6px;
+        font-size: 5px;
+        min-width: 18px;
       }
       .stat-value {
-        font-size: 10px;
+        font-size: 11px;
+        overflow: visible;
+        text-overflow: clip;
+        max-width: none;
       }
       .stat-score .stat-value {
-        font-size: 10px;
+        font-size: 11px;
+        letter-spacing: -0.055em;
+        transform: none;
+        transform-origin: initial;
       }
       .score-strip {
         font-size: 7px;
@@ -539,13 +549,29 @@
     font-size: 24px;
   }
 
-  body.capture-mode .stat-label {
-    font-size: 14px;
+  body.capture-mode .card-rank-no {
+  top: 4px;
+  left: 5px;
+  font-size: 28px;
   }
 
-  body.capture-mode .stat-value,
+  body.capture-mode .stat-label {
+    font-size: 9px;
+    min-width: 36px;
+  }
+
+  body.capture-mode .stat-value {
+    font-size: 24px;
+    overflow: visible;
+    text-overflow: clip;
+    max-width: none;
+  }
+
   body.capture-mode .stat-score .stat-value {
     font-size: 24px;
+    letter-spacing: -0.055em;
+    transform: none;
+    transform-origin: initial;
   }
 
   body.capture-mode .play-dot {
@@ -792,7 +818,7 @@
 
       if (!ratingText.trim()) {
         errorBox.textContent = "レーティング対象 TSV を貼り付けてください。";
-        return;
+        return false;
       }
 
       let constText = "";
@@ -811,7 +837,7 @@
       } catch (e) {
         console.error(e);
         errorBox.textContent = "定数表スプレッドシートの読み込みに失敗しました。";
-        return;
+        return false;
       } finally {
         loading.style.display = "none";
         generateBtnEl.disabled = false;
@@ -825,7 +851,7 @@
       } catch (e) {
         console.error(e);
         errorBox.textContent = "TSV のパースに失敗しました。ヘッダー行を含めて貼り付けているか確認してください。";
-        return;
+        return false;
       }
 
       const constMap = new Map();
@@ -1022,18 +1048,12 @@
 
       bestSongs.forEach((s, i) => bestCardsEl.appendChild(createCard(s, i)));
       newSongs.forEach((s, i) => newCardsEl.appendChild(createCard(s, i)));
+
+      return true;
     }
 
-    document.getElementById("generateBtn").addEventListener("click", () => {
-      try {
-        build();
-      } catch (e) {
-        console.error(e);
-        alert("Generate 中にエラーが出ています（Console を確認してください）。");
-      }
-    });
 
-    document.getElementById("saveImageBtn").addEventListener("click", async () => {
+    async function renderImagePreview() {
       const target = document.getElementById("outputPanel");
       const previewPanel = document.getElementById("imagePreviewPanel");
       const previewImg = document.getElementById("generatedImagePreview");
@@ -1041,12 +1061,14 @@
 
       if (!target) {
         alert("outputPanel が見つかりません。");
-        return;
+        return false;
       }
 
-      saveBtn.disabled = true;
-      const oldText = saveBtn.textContent;
-      saveBtn.textContent = "画像生成中...";
+      const oldText = saveBtn ? saveBtn.textContent : "";
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = "画像生成中...";
+      }
 
       const captureWidth = "1280px";
       document.body.style.setProperty("--capture-width", captureWidth);
@@ -1068,15 +1090,45 @@
           previewPanel.style.display = "block";
           previewPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }
+
+        return true;
       } catch (e) {
         console.error(e);
         alert("画像生成に失敗しました。Console を確認してください。");
+        return false;
       } finally {
         document.body.classList.remove("capture-mode");
         document.body.style.removeProperty("--capture-width");
-        saveBtn.disabled = false;
-        saveBtn.textContent = oldText;
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = oldText;
+        }
       }
+    }
+
+    document.getElementById("generateBtn").addEventListener("click", async () => {
+      const generateBtn = document.getElementById("generateBtn");
+      const oldText = generateBtn.textContent;
+
+      try {
+        generateBtn.disabled = true;
+        generateBtn.textContent = "生成中...";
+
+        const ok = await build();
+        if (ok) {
+          await renderImagePreview();
+        }
+      } catch (e) {
+        console.error(e);
+        alert("Generate 中にエラーが出ています（Console を確認してください）。");
+      } finally {
+        generateBtn.disabled = false;
+        generateBtn.textContent = oldText;
+      }
+    });
+
+    document.getElementById("saveImageBtn").addEventListener("click", async () => {
+      await renderImagePreview();
     });
 
     (() => {
@@ -1110,7 +1162,9 @@
         const ta = document.getElementById("ratingTsv");
         if (ta) ta.value = tsv;
         document.getElementById("outputUpdated").textContent = "UPDATE: " + formatDateTime(new Date());
-        build();
+        build().then(ok => {
+          if (ok) renderImagePreview();
+        });
 
         history.replaceState(null, "", location.pathname + location.search);
       } catch (e) {

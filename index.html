@@ -28,6 +28,40 @@
       padding: 12px 14px;
       box-shadow: 0 4px 16px rgba(0,0,0,0.4);
     }
+
+    #outputPanel {
+      background:
+        linear-gradient(rgba(23,30,43,0.10), rgba(23,30,43,0.14)),
+        radial-gradient(circle at top left, rgba(251,191,36,0.72), transparent 35%),
+        radial-gradient(circle at bottom right, rgba(249,115,22,0.42), transparent 38%),
+        radial-gradient(circle at 72% 18%, rgba(255,255,255,0.42), transparent 26%),
+        linear-gradient(135deg, #fde68a, #fef3c7 42%, #fbbf24 100%);
+      color: #0f172a;
+      border-radius: 0;
+      padding: 16px;
+      box-shadow: none;
+    }
+
+    .output-header {
+      display: grid;
+      grid-template-columns: 150px 1fr auto;
+      gap: 20px;
+      align-items: center;
+      margin-bottom: 22px;
+      padding: 18px 22px;
+      border-radius: 22px;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.50), rgba(255,255,255,0.22)),
+        radial-gradient(circle at top left, rgba(14,165,233,0.34), transparent 58%),
+        radial-gradient(circle at bottom right, rgba(168,85,247,0.28), transparent 55%);
+      border: 1px solid rgba(255,255,255,0.48);
+      box-shadow: 0 16px 44px rgba(15,23,42,0.16);
+      backdrop-filter: blur(4px);
+    }
+
+    .output-meta {
+      display: none;
+    }
     label {
       font-size: 12px;
       opacity: 0.8;
@@ -75,11 +109,7 @@
     .btn:active { transform: translateY(1px); }
 
     .summary-bar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: baseline;
-      margin-bottom: 8px;
+      display: none;
     }
     .summary-main {
       font-size: 24px;
@@ -93,65 +123,94 @@
       border: 1px solid rgba(148,163,184,0.5);
     }
     .columns {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
+      display: block;
     }
     @media (max-width: 960px) {
       .columns { grid-template-columns: 1fr; }
     }
     .section-title {
-      font-size: 14px;
-      font-weight: 600;
-      margin-bottom: 6px;
+      font-size: 24px;
+      font-weight: 950;
+      margin: 18px 0 10px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 1px solid rgba(148,163,184,0.4);
-      padding-bottom: 2px;
+      color: #020617;
+      border-bottom: none;
+      padding-bottom: 0;
     }
     .cards {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-      gap: 10px;
-    }
-    #outputPanel {
-      max-width: 100%;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      background: rgba(15,23,42,0.58);
+      padding: 8px;
     }
     body.capture-mode #outputPanel {
-      width: var(--capture-width, 1700px);
+      width: var(--capture-width, 1280px);
       max-width: none;
       margin: 0 auto;
     }
     body.capture-mode .cards {
-      grid-template-columns: repeat(3, minmax(240px, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
     }
     .card {
-      background: #020617;
-      border-radius: 10px;
-      padding: 8px;
-      display: grid;
-      grid-template-columns: 74px 1fr;
-      gap: 8px;
-      border: 1px solid rgba(148,163,184,0.25);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+      background: transparent;
+      border-radius: 0;
+      padding: 0;
+      display: block;
+      border: none;
+      box-shadow: none;
+      min-width: 0;
     }
     .thumb {
-      border-radius: 8px;
+      position: relative;
+      border-radius: 0;
       overflow: hidden;
-      width: 74px;
-      height: 74px;
-      background: linear-gradient(135deg,#0ea5e9,#6366f1);
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      height: auto;
+      background: rgba(15,23,42,0.85);
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 10px;
       text-align: center;
-      padding: 4px;
+      padding: 0;
       box-sizing: border-box;
-      color: rgba(15,23,42,0.9);
-      font-weight: 700;
+      border: 5px solid rgba(255,255,255,0.7);
+      color: white;
+      font-weight: 900;
     }
+
+    .thumb.diff-ult { border-color: #111827; }
+    .thumb.diff-mas { border-color: #a855f7; }
+    .thumb.diff-exp { border-color: #ef4444; }
+    .thumb.diff-adv { border-color: #facc15; }
+    .thumb.diff-bas { border-color: #22c55e; }
+
+    .diff-chip {
+      position: absolute;
+      top: 5px;
+      left: 72px;
+      color: white;
+      background: rgba(0,0,0,0.74);
+      border-radius: 999px;
+      padding: 3px 9px;
+      font-size: 18px;
+      font-weight: 950;
+      line-height: 1;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+      z-index: 2;
+      border: 2px solid rgba(255,255,255,0.72);
+      box-sizing: border-box;
+    }
+
+    .diff-chip.diff-ult { background: #111827; }
+    .diff-chip.diff-mas { background: #9333ea; }
+    .diff-chip.diff-exp { background: #dc2626; }
+    .diff-chip.diff-adv { background: #eab308; color: #111827; text-shadow: none; }
+    .diff-chip.diff-bas { background: #16a34a; }
     .thumb img {
       width: 100%;
       height: 100%;
@@ -161,39 +220,132 @@
     .card-main {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 3px;
+      min-width: 0;
     }
     .card-title-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 6px;
-      align-items: baseline;
+      display: block;
+      min-width: 0;
     }
     .card-title {
-      font-size: 11px;
-      font-weight: 600;
-      line-height: 1.2;
+      margin-top: 5px;
+      font-size: 24px;
+      font-weight: 950;
+      line-height: 1.1;
+      color: white;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-shadow: 0 2px 3px rgba(0,0,0,0.85);
     }
     .card-rank {
-      font-size: 10px;
-      opacity: 0.8;
+      display: none;
     }
     .card-badges {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-      margin-top: 2px;
+      position: absolute;
+      inset: 0;
+      display: block;
+      margin-top: 0;
+      pointer-events: none;
     }
     .badge {
-      display: inline-flex;
+      border-radius: 0;
+      padding: 0;
+      font-size: 9px;
+      font-weight: 900;
+      border: none;
+      gap: 0;
+      color: white;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.85);
+    }
+    .card-rank-no {
+      position: absolute;
+      top: 4px;
+      left: 5px;
+      color: white;
+      font-size: 28px;
+      font-weight: 950;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.9);
+      z-index: 2;
+    }
+
+    .card-stat {
+      position: absolute;
+      left: 4px;
+      bottom: 4px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1px;
+      z-index: 2;
+      width: calc(100% - 8px);
+      max-width: 96%;
+    }
+
+    .stat-line {
+      display: flex;
+      flex-direction: row;
+      align-items: baseline;
+      justify-content: flex-start;
+      color: white;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.95);
+      min-width: 0;
+      min-height: 0;
+      gap: 4px;
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-size: 14px;
+      font-weight: 950;
+      line-height: 1;
+      opacity: 0.98;
+      flex: 0 0 auto;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 950;
+      line-height: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+      text-align: left;
+      flex: 0 1 auto;
+    }
+
+    .stat-score .stat-value {
+      font-size: 24px;
+      letter-spacing: -0.03em;
+    }
+
+    .play-dot {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      min-width: 34px;
+      height: 34px;
+      padding: 0 6px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #ec4899, #8b5cf6);
+      color: white;
+      display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 999px;
-      padding: 1px 6px;
-      font-size: 9px;
-      font-weight: 600;
-      border: 1px solid rgba(248,250,252,0.35);
-      gap: 2px;
+      font-size: 18px;
+      font-weight: 950;
+      border: 2px solid rgba(255,255,255,0.85);
+      box-sizing: border-box;
+      z-index: 2;
+    }
+
+    .thumb::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.28), transparent 28%, rgba(0,0,0,0.58));
+      z-index: 1;
     }
     .badge-const {
       background: rgba(56,189,248,0.15);
@@ -221,6 +373,198 @@
       font-size: 12px;
       margin-top: 4px;
     }
+
+    @media (max-width: 960px) {
+      body {
+        padding: 0;
+      }
+      .layout {
+        display: block;
+      }
+      .layout > .panel:first-child {
+        margin: 12px;
+      }
+      #outputPanel {
+        margin: 0;
+        padding: 10px;
+      }
+      .output-header {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 4px;
+        padding: 6px;
+        border-radius: 12px;
+      }
+      .top-stat-card {
+        min-height: 44px;
+        border-radius: 9px;
+        padding: 5px 4px;
+      }
+
+      .top-stat-label {
+        font-size: 6px;
+        margin-bottom: 3px;
+      }
+
+      .top-stat-value {
+        font-size: 12px;
+      }
+
+      .top-stat-rating .top-stat-value {
+        font-size: 16px;
+      }
+
+      .top-stat-date .top-stat-value {
+        font-size: 8px;
+      }
+      .cards {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 4px;
+        padding: 4px;
+      }
+      .card-title {
+        font-size: 11px;
+      }
+      .card-rank-no {
+        font-size: 9px;
+      }
+      .card-stat {
+        left: 2px;
+        bottom: 2px;
+        width: calc(100% - 4px);
+        gap: 0;
+      }
+      .stat-line {
+        min-height: 0;
+        gap: 2px;
+        line-height: 1;
+      }
+      .stat-label {
+        font-size: 6px;
+      }
+      .stat-value {
+        font-size: 10px;
+      }
+      .stat-score .stat-value {
+        font-size: 10px;
+      }
+      .score-strip {
+        font-size: 7px;
+        padding: 1px 2px;
+      }
+      .play-dot {
+        min-width: 18px;
+        height: 18px;
+        font-size: 9px;
+        border-width: 1px;
+      }
+      .thumb {
+        border-width: 3px;
+      }
+      .diff-chip {
+        top: 3px;
+        left: 32px;
+        font-size: 7px;
+        padding: 1px 4px;
+        border-width: 1px;
+      }
+    }
+    .top-stat-card {
+      min-width: 0;
+      min-height: 92px;
+      border-radius: 18px;
+      padding: 10px 12px;
+      box-sizing: border-box;
+      background: rgba(255,255,255,0.82);
+      border: 1px solid rgba(255,255,255,0.72);
+      box-shadow: 0 10px 24px rgba(15,23,42,0.12);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      color: #07111f;
+      overflow: hidden;
+    }
+
+    .top-stat-label {
+      font-size: 15px;
+      font-weight: 950;
+      opacity: 0.72;
+      margin-bottom: 8px;
+    }
+
+    .top-stat-value {
+      font-size: 34px;
+      font-weight: 950;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .top-stat-rating .top-stat-value {
+      font-size: 38px;
+    }
+
+    .top-stat-date .top-stat-value {
+      font-size: 18px;
+    }
+
+    .output-header {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    @media (max-width: 960px) {
+  body.capture-mode #outputPanel {
+    width: var(--capture-width, 1280px);
+    max-width: none;
+    margin: 0 auto;
+    padding: 16px;
+  }
+
+  body.capture-mode .output-header {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 10px;
+    padding: 18px 22px;
+    border-radius: 22px;
+  }
+
+  body.capture-mode .cards {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+    padding: 8px;
+  }
+
+  body.capture-mode .card-title {
+    font-size: 24px;
+  }
+
+  body.capture-mode .stat-label {
+    font-size: 14px;
+  }
+
+  body.capture-mode .stat-value,
+  body.capture-mode .stat-score .stat-value {
+    font-size: 24px;
+  }
+
+  body.capture-mode .play-dot {
+    min-width: 34px;
+    height: 34px;
+    font-size: 18px;
+  }
+
+  body.capture-mode .thumb {
+    border-width: 5px;
+  }
+
+  body.capture-mode .diff-chip {
+    top: 5px;
+    left: 72px;
+    font-size: 18px;
+    padding: 3px 9px;
+  }
+}
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -251,8 +595,15 @@
       <div>
         <button class="btn" id="generateBtn">Generate</button>
         <button class="btn" id="saveImageBtn" style="margin-left:4px;background:#10b981;">
-          レート表を画像として保存
+          保存用画像を表示
         </button>
+      </div>
+
+      <div id="imagePreviewPanel" style="display:none;margin-top:12px;">
+        <div style="font-size:12px;opacity:0.8;margin-bottom:6px;">
+          画像を長押し、または右クリックで保存できます。
+        </div>
+        <img id="generatedImagePreview" alt="生成されたレート表画像" style="width:100%;border-radius:8px;border:1px solid rgba(148,163,184,0.45);background:#111827;display:block;" />
       </div>
 
       <div id="loadingIndicator" style="display:none;font-size:12px;opacity:0.8;margin-top:4px;">
@@ -267,6 +618,40 @@
     </div>
 
     <div class="panel" id="outputPanel">
+      <div class="output-header">
+        <div class="top-stat-card top-stat-date">
+          <div class="top-stat-label">作成日</div>
+          <div class="top-stat-value" id="topGenerated">----/--/--</div>
+        </div>
+
+        <div class="top-stat-card top-stat-player">
+          <div class="top-stat-label">プレイヤー名</div>
+          <div class="top-stat-value" id="topPlayer">--</div>
+        </div>
+
+        <div class="top-stat-card top-stat-rating">
+          <div class="top-stat-label">レート</div>
+          <div class="top-stat-value" id="topRating">--.--</div>
+        </div>
+
+        <div class="top-stat-card top-stat-best">
+          <div class="top-stat-label">BEST</div>
+          <div class="top-stat-value" id="topBest">--.--</div>
+        </div>
+
+        <div class="top-stat-card top-stat-new">
+          <div class="top-stat-label">NEW</div>
+          <div class="top-stat-value" id="topNew">--.--</div>
+        </div>
+
+        <div class="output-meta" style="display:none;">
+          <div id="outputUpdated">UPDATE: ----/--/-- --:--:--</div>
+          <div id="outputGenerated">GENERATE: ----/--/-- --:--:--</div>
+        </div>
+      </div>
+
+
+
       <div class="summary-bar" id="summaryBar">
         <div class="summary-main" id="summaryRating">Rating --.--</div>
         <div class="summary-chip" id="summaryBest">BEST --.--</div>
@@ -277,8 +662,8 @@
       <div class="columns">
         <div>
           <div class="section-title">
-            <span>Best 30 Songs</span>
-            <span id="countBest" style="font-size:11px;opacity:0.7;">0 song</span>
+            <span>ベスト枠 30曲</span>
+            <span id="countBest" style="font-size:18px;opacity:0.8;">0 song</span>
           </div>
           <div class="cards" id="bestCards"></div>
           <div class="empty-hint" id="bestHint">
@@ -287,8 +672,8 @@
         </div>
         <div>
           <div class="section-title">
-            <span>New 20 Songs</span>
-            <span id="countNew" style="font-size:11px;opacity:0.7;">0 song</span>
+            <span>新曲枠 20曲</span>
+            <span id="countNew" style="font-size:18px;opacity:0.8;">0 song</span>
           </div>
           <div class="cards" id="newCards"></div>
           <div class="empty-hint" id="newHint">
@@ -339,6 +724,39 @@
     function floor2(v) {
       const EPS = 1e-9;
       return Math.floor((v + EPS) * 100) / 100;
+    }
+
+    function floor4(v) {
+      const EPS = 1e-9;
+      return Math.floor((v + EPS) * 10000) / 10000;
+    }
+
+    function formatDateTime(d) {
+      const pad = n => String(n).padStart(2, "0");
+      return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+
+    function compactScore(score) {
+      const s = Number(score);
+      if (!isFinite(s)) return "--";
+
+      let rank = "D";
+
+      if (s >= 1009000) rank = "SSS+";
+      else if (s >= 1007500) rank = "SSS";
+      else if (s >= 1005000) rank = "SS+";
+      else if (s >= 1000000) rank = "SS";
+      else if (s >= 990000) rank = "S+";
+      else if (s >= 975000) rank = "S";
+      else if (s >= 950000) rank = "AAA";
+      else if (s >= 925000) rank = "AA";
+      else if (s >= 900000) rank = "A";
+      else if (s >= 800000) rank = "BBB";
+      else if (s >= 700000) rank = "BB";
+      else if (s >= 600000) rank = "B";
+      else if (s >= 500000) rank = "C";
+
+      return s.toLocaleString("ja-JP") + " " + rank;
     }
 
     function parseTsv(text) {
@@ -482,18 +900,31 @@
       const bestSum2 = sumPerSong2dp(bestSongs);
       const newSum2  = sumPerSong2dp(newSongs);
 
-      const bestAvg = floor2(bestSum2 / 30);
-      const newAvg  = floor2(newSum2 / 20);
+      const bestAvg = floor4(bestSum2 / 30);
+      const newAvg  = floor4(newSum2 / 20);
+      const allAvg4 = floor4((bestSum2 + newSum2) / 50);
       const allAvg  = floor2((bestSum2 + newSum2) / 50);
 
       document.getElementById("summaryRating").textContent =
         "Rating " + (allAvg != null ? allAvg.toFixed(2) : "--.--");
       document.getElementById("summaryBest").textContent =
-        "BEST " + (bestAvg != null ? bestAvg.toFixed(2) : "--.--");
+        "BEST " + (bestAvg != null ? bestAvg.toFixed(4) : "--.----");
       document.getElementById("summaryNew").textContent =
-        "NEW " + (newAvg != null ? newAvg.toFixed(2) : "--.--");
+        "NEW " + (newAvg != null ? newAvg.toFixed(4) : "--.----");
       document.getElementById("summaryPlayer").textContent =
         playerName ? ("Player: " + playerName) : "";
+
+
+      const now = new Date();
+      const dateOnly = formatDateTime(now);
+
+      document.getElementById("topGenerated").textContent = dateOnly;
+      document.getElementById("topPlayer").textContent = playerName || "--";
+      document.getElementById("topRating").textContent = allAvg4 != null ? allAvg4.toFixed(4) : "--.----";
+      document.getElementById("topBest").textContent = bestAvg != null ? bestAvg.toFixed(4) : "--.----";
+      document.getElementById("topNew").textContent = newAvg != null ? newAvg.toFixed(4) : "--.----";
+
+      document.getElementById("outputGenerated").textContent = "GENERATE: " + formatDateTime(now);
 
       document.getElementById("countBest").textContent =
         bestSongs.length + " song" + (bestSongs.length !== 1 ? "s" : "");
@@ -512,8 +943,10 @@
         const card = document.createElement("div");
         card.className = "card";
 
+        const diffClass = "diff-" + String(song.diff || "").toLowerCase();
+
         const thumb = document.createElement("div");
-        thumb.className = "thumb";
+        thumb.className = "thumb " + diffClass;
 
         if (song.imageUrl) {
           const img = document.createElement("img");
@@ -544,29 +977,42 @@
         const badges = document.createElement("div");
         badges.className = "card-badges";
 
-        const constBadge = document.createElement("span");
-        constBadge.className = "badge badge-const";
-        constBadge.textContent = "CONST " + (song.constValue != null ? song.constValue.toFixed(1) : "--");
-        badges.appendChild(constBadge);
+        const rankNo = document.createElement("div");
+        rankNo.className = "card-rank-no";
+        rankNo.textContent = "#" + (index + 1);
+        badges.appendChild(rankNo);
 
-        const ratingBadge = document.createElement("span");
-        ratingBadge.className = "badge badge-rating";
-        ratingBadge.textContent = "RATING " + (song.rateDisplay != null ? song.rateDisplay.toFixed(2) : "--.--");
-        badges.appendChild(ratingBadge);
+        const diffChip = document.createElement("div");
+        diffChip.className = "diff-chip " + diffClass;
+        diffChip.textContent = song.diff || "";
+        badges.appendChild(diffChip);
 
-        const scoreBadge = document.createElement("span");
-        scoreBadge.className = "badge badge-score";
-        const scoreStr = song.score ? Number(song.score).toLocaleString("ja-JP") : "--";
-        scoreBadge.textContent = "SCORE " + scoreStr;
-        badges.appendChild(scoreBadge);
+        const stat = document.createElement("div");
+        stat.className = "card-stat";
+        stat.innerHTML = `
+          <div class="stat-line stat-const">
+            <span class="stat-label">CONST</span>
+            <span class="stat-value">${song.constValue != null ? song.constValue.toFixed(1) : "--"}</span>
+          </div>
+          <div class="stat-line stat-rating">
+            <span class="stat-label">RATING</span>
+            <span class="stat-value">${song.rateDisplay != null ? song.rateDisplay.toFixed(2) : "--.--"}</span>
+          </div>
+          <div class="stat-line stat-score">
+            <span class="stat-label">SCORE</span>
+            <span class="stat-value">${compactScore(song.score)}</span>
+          </div>
+        `;
+        badges.appendChild(stat);
 
-        const playCountBadge = document.createElement("span");
-        playCountBadge.className = "badge badge-play";
-        playCountBadge.textContent = "PLAY " + (song.playCount ? song.playCount + "回" : "--");
-        badges.appendChild(playCountBadge);
+        const playDot = document.createElement("div");
+        playDot.className = "play-dot";
+        playDot.title = "PLAY " + (song.playCount ? song.playCount + "回" : "--");
+        playDot.textContent = song.playCount || "-";
+        badges.appendChild(playDot);
 
         main.appendChild(titleRow);
-        main.appendChild(badges);
+        thumb.appendChild(badges);
 
         card.appendChild(thumb);
         card.appendChild(main);
@@ -589,32 +1035,48 @@
 
     document.getElementById("saveImageBtn").addEventListener("click", async () => {
       const target = document.getElementById("outputPanel");
+      const previewPanel = document.getElementById("imagePreviewPanel");
+      const previewImg = document.getElementById("generatedImagePreview");
+      const saveBtn = document.getElementById("saveImageBtn");
 
       if (!target) {
         alert("outputPanel が見つかりません。");
         return;
       }
 
-      const isMobile = window.innerWidth <= 768;
-      const captureWidth = isMobile ? "1100px" : "1700px";
+      saveBtn.disabled = true;
+      const oldText = saveBtn.textContent;
+      saveBtn.textContent = "画像生成中...";
+
+      const captureWidth = "1280px";
       document.body.style.setProperty("--capture-width", captureWidth);
 
       document.body.classList.add("capture-mode");
-      await new Promise(r => setTimeout(r, 50));
+      await new Promise(r => setTimeout(r, 80));
 
-      const canvas = await html2canvas(target, {
-        backgroundColor: "#171e2b",
-        scale: 2,
-        useCORS: true
-      });
+      try {
+        const canvas = await html2canvas(target, {
+          backgroundColor: "#171e2b",
+          scale: 2,
+          useCORS: true
+        });
 
-      document.body.classList.remove("capture-mode");
-      document.body.style.removeProperty("--capture-width");
+        const imageUrl = canvas.toDataURL("image/png");
 
-      const link = document.createElement("a");
-      link.download = "chunithm_rating.png";
-      link.href = canvas.toDataURL("image/png");
-      link.click();
+        if (previewImg) previewImg.src = imageUrl;
+        if (previewPanel) {
+          previewPanel.style.display = "block";
+          previewPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+      } catch (e) {
+        console.error(e);
+        alert("画像生成に失敗しました。Console を確認してください。");
+      } finally {
+        document.body.classList.remove("capture-mode");
+        document.body.style.removeProperty("--capture-width");
+        saveBtn.disabled = false;
+        saveBtn.textContent = oldText;
+      }
     });
 
     (() => {
@@ -647,7 +1109,7 @@
 
         const ta = document.getElementById("ratingTsv");
         if (ta) ta.value = tsv;
-
+        document.getElementById("outputUpdated").textContent = "UPDATE: " + formatDateTime(new Date());
         build();
 
         history.replaceState(null, "", location.pathname + location.search);

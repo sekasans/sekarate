@@ -18,8 +18,8 @@
     { frame: "NEW",  path: "ratingDetailRecent/" }
   ];
 
-  const RECEIVER_URL = "http://127.0.0.1:5500/index.html";
-  // const RECEIVER_URL = "https://sekasans.github.io/sekarate/";
+  //const RECEIVER_URL = "http://127.0.0.1:5500/index.html";
+  const RECEIVER_URL = "https://sekasans.github.io/sekarate/";
 
   function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));

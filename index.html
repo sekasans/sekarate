@@ -343,6 +343,43 @@
       z-index: 2;
     }
 
+    .clear-badge {
+      position: absolute;
+      right: 5px;
+      top: 44px;
+      min-width: 46px;
+      height: 28px;
+      padding: 0 8px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 17px;
+      font-weight: 950;
+      line-height: 1;
+      border: 2px solid rgba(255,255,255,0.86);
+      box-sizing: border-box;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.75);
+      z-index: 2;
+    }
+
+    .clear-badge.clear-fc {
+      background: linear-gradient(135deg, #06b6d4, #2563eb);
+    }
+
+    .clear-badge.clear-aj {
+      background: linear-gradient(135deg, #f59e0b, #f97316);
+      color: #111827;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+    }
+
+    .clear-badge.clear-ajc {
+      background: linear-gradient(135deg, #fef08a, #f59e0b, #ec4899);
+      color: #111827;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.55);
+    }
+
     .thumb::after {
       content: "";
       position: absolute;
@@ -612,7 +649,7 @@
         <span style="font-size:12px;opacity:0.8;">ID（譜面ID）を表示する</span>
       </label>
 
-      <label>レーティング対象 TSV（frame / title / diff / score / idx / playCount）</label>
+      <label>レーティング対象 TSV（frame / title / diff / score / idx / playCount / clear）</label>
       <textarea id="ratingTsv" placeholder="frame&#9;title&#9;diff&#9;score&#9;idx&#9;playCount&#10;BEST&#9;U&amp;iVERSE ..."></textarea>
 
       <label>定数表 TSV（idx / title / diff / const / imageUrl ...）</label>
@@ -807,11 +844,19 @@
       });
     }
 
+    function normalizePlayerName(value) {
+      if (typeof value !== "string") return "";
+      const trimmed = value.trim();
+      if (!trimmed || trimmed === "[object HTMLInputElement]") return "";
+      return trimmed;
+    }
+
     const CONST_SHEET_URL = "https://script.google.com/macros/s/AKfycbzFCBBjjHSG8REzEpSlw48SmAbrRNMnjMPHg3fd0bF7QA1_A3xD6vApLFy4M5QVTX7xDA/exec";
+    let hashPlayerNameFallback = "";
 
     async function build() {
       const ratingText = document.getElementById("ratingTsv").value;
-      const playerName  = document.getElementById("playerName").value.trim();
+      const inputPlayerName = normalizePlayerName(document.getElementById("playerName").value);
       const showId      = document.getElementById("showId").checked;
       const errorBox    = document.getElementById("errorBox");
       errorBox.textContent = "";
@@ -845,8 +890,22 @@
       }
 
       let ratingRows, constRows;
+      let playerName = inputPlayerName;
+
       try {
         ratingRows = parseTsv(ratingText);
+
+        const playerRow = ratingRows.find(r => r.playerName || r.playername);
+        const tsvPlayerName = playerRow
+          ? normalizePlayerName(playerRow.playerName || playerRow.playername || "")
+          : "";
+
+        playerName = normalizePlayerName(inputPlayerName || tsvPlayerName || hashPlayerNameFallback || "");
+
+        if (playerName) {
+          document.getElementById("playerName").value = playerName;
+        }
+
         constRows  = parseTsv(constText);
       } catch (e) {
         console.error(e);
@@ -905,6 +964,7 @@
           score,
           idx,
           playCount: row.playCount || row["playCount"] || row.playcount || row["playcount"] || "",
+          clear: (row.clear || row["clear"] || row.Clear || "").toUpperCase(),
           constValue: isFinite(constValue) ? constValue : null,
           imageUrl: base.imageUrl || "",
           rateRaw,
@@ -1036,6 +1096,12 @@
         playDot.title = "PLAY " + (song.playCount ? song.playCount + "回" : "--");
         playDot.textContent = song.playCount || "-";
         badges.appendChild(playDot);
+        if (song.clear) {
+          const clearBadge = document.createElement("div");
+          clearBadge.className = "clear-badge clear-" + song.clear.toLowerCase();
+          clearBadge.textContent = song.clear;
+          badges.appendChild(clearBadge);
+        }
 
         main.appendChild(titleRow);
         thumb.appendChild(badges);
@@ -1147,20 +1213,56 @@
         const ta = document.getElementById("ratingTsv");
         if (ta) ta.value = data.tsv;
 
-        build();
+        const postedPlayerName = normalizePlayerName(data.playerName);
+        if (postedPlayerName) {
+          const playerNameInput = document.getElementById("playerName");
+          if (playerNameInput) playerNameInput.value = postedPlayerName;
+        }
+
+        build().then(ok => {
+          if (ok) renderImagePreview();
+        });
       });
     })();
 
     (function hydrateFromHash() {
-      const m = location.hash.match(/tsv=([\s\S]*)$/);
-      if (!m) return;
+      const hash = location.hash.replace(/^#/, "");
+      if (!hash) return;
 
       try {
-        const tsv = decodeURIComponent(m[1]);
+        let rawTsv = "";
+        let hashPlayerName = "";
+
+        const playerNameMatch = hash.match(/(?:^|&)playerName=([^&]*)/);
+        if (playerNameMatch) {
+          hashPlayerName = normalizePlayerName(decodeURIComponent(playerNameMatch[1] || ""));
+        }
+
+        const tsvIndex = hash.indexOf("tsv=");
+        if (tsvIndex !== -1) {
+          rawTsv = decodeURIComponent(hash.slice(tsvIndex + 4));
+        }
+
+        if (!rawTsv) {
+          const legacyMatch = location.hash.match(/tsv=([\s\S]*)$/);
+          rawTsv = legacyMatch ? decodeURIComponent(legacyMatch[1]) : "";
+        }
+
+        const tsv = rawTsv;
         if (!tsv.trim()) return;
+
+        hashPlayerNameFallback = hashPlayerName;
 
         const ta = document.getElementById("ratingTsv");
         if (ta) ta.value = tsv;
+
+        const playerNameInput = document.getElementById("playerName");
+        if (playerNameInput && hashPlayerName) {
+          playerNameInput.value = hashPlayerName;
+        }
+
+        console.log("hydrated playerName:", hashPlayerName || "(empty)");
+
         document.getElementById("outputUpdated").textContent = "UPDATE: " + formatDateTime(new Date());
         build().then(ok => {
           if (ok) renderImagePreview();

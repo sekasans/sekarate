@@ -31,11 +31,11 @@
 
     #outputPanel {
       background:
-        linear-gradient(rgba(23,30,43,0.10), rgba(23,30,43,0.14)),
-        radial-gradient(circle at top left, rgba(251,191,36,0.72), transparent 35%),
-        radial-gradient(circle at bottom right, rgba(249,115,22,0.42), transparent 38%),
-        radial-gradient(circle at 72% 18%, rgba(255,255,255,0.42), transparent 26%),
-        linear-gradient(135deg, #fde68a, #fef3c7 42%, #fbbf24 100%);
+        linear-gradient(rgba(23,30,43,0.08), rgba(23,30,43,0.12)),
+        radial-gradient(circle at top left, rgba(250,204,21,0.82), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(132,204,22,0.58), transparent 38%),
+        radial-gradient(circle at 72% 18%, rgba(255,255,255,0.48), transparent 26%),
+        linear-gradient(135deg, #fef08a, #bef264 46%, #facc15 100%);
       color: #0f172a;
       border-radius: 0;
       padding: 16px;
@@ -322,6 +322,28 @@
       transform: none;
       transform-origin: initial;
     }
+
+    .score-rank {
+      display: inline-block;
+      margin-left: 4px;
+      font-weight: 950;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.95);
+    }
+
+    .rank-sssp { color: #fef08a; }
+    .rank-sss { color: #facc15; }
+    .rank-ssp { color: #fb7185; }
+    .rank-ss { color: #f472b6; }
+    .rank-sp { color: #a78bfa; }
+    .rank-s { color: #60a5fa; }
+    .rank-aaa { color: #34d399; }
+    .rank-aa { color: #22c55e; }
+    .rank-a { color: #84cc16; }
+    .rank-bbb,
+    .rank-bb,
+    .rank-b,
+    .rank-c,
+    .rank-d { color: #cbd5e1; }
 
     .play-dot {
       position: absolute;
@@ -819,7 +841,8 @@
       else if (s >= 600000) rank = "B";
       else if (s >= 500000) rank = "C";
 
-      return s.toLocaleString("ja-JP") + " " + rank;
+      const rankClass = "rank-" + rank.replace("+", "p").toLowerCase();
+      return s.toLocaleString("ja-JP") + ` <span class="score-rank ${rankClass}">${rank}</span>`;
     }
 
     function parseTsv(text) {

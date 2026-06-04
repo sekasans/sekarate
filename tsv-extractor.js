@@ -18,7 +18,8 @@
     { frame: "NEW",  path: "ratingDetailRecent/" }
   ];
 
-  const RECEIVER_URL = "https://sekasans.github.io/sekarate/";
+  const RECEIVER_URL = "http://127.0.0.1:5500/index.html";
+  // const RECEIVER_URL = "https://sekasans.github.io/sekarate/";
 
   function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -30,6 +31,38 @@
       .replace(/[，,]/g, "")
       .replace(/回/g, "")
       .trim();
+  }
+
+  function extractPlayerName(doc) {
+    const el = doc.querySelector(".player_name_in");
+    return el ? el.textContent.trim() : "";
+  }
+
+  function findDifficultyBox(doc, diffId) {
+    const diffClass = DIFF_CLASS[String(diffId)];
+    if (!diffClass) return null;
+
+    let box = doc.querySelector(".music_box.bg_" + diffClass);
+
+    if (!box) {
+      const titleEl = doc.querySelector(".musicdata_detail_difficulty.title_" + diffClass);
+      box = titleEl ? titleEl.closest(".music_box") : null;
+    }
+
+    return box;
+  }
+
+  function extractClearStatus(doc, diffId) {
+    const box = findDifficultyBox(doc, diffId);
+    if (!box) return "";
+
+    const html = box.innerHTML || "";
+
+    if (html.includes("icon_alljusticecritical.png")) return "AJC";
+    if (html.includes("icon_alljustice.png")) return "AJ";
+    if (html.includes("icon_fullcombo.png")) return "FC";
+
+    return "";
   }
 
   function scrape(doc, frame) {
@@ -60,7 +93,8 @@
           diffId,
           score,
           idx,
-          playCount: ""
+          playCount: "",
+          clear: ""
         });
       }
     });
@@ -92,19 +126,7 @@
     const diffClass = DIFF_CLASS[String(diffId)];
     if (!diffClass) return "";
 
-    // 例:
-    // <div class="w420 music_box bg_master">
-    //   <div class="musicdata_detail_difficulty title_master">MASTER</div>
-    //   ...
-    //   <div class="musicdata_score_title">プレイ回数：</div>
-    //   <div class="musicdata_score_num"><span class="text_b">6回</span></div>
-    // </div>
-    let box = doc.querySelector(".music_box.bg_" + diffClass);
-
-    if (!box) {
-      const titleEl = doc.querySelector(".musicdata_detail_difficulty.title_" + diffClass);
-      box = titleEl ? titleEl.closest(".music_box") : null;
-    }
+    const box = findDifficultyBox(doc, diffId);
 
     if (!box) {
       console.warn("対象難易度のmusic_boxが見つかりません:", diffId, diffClass);
@@ -171,6 +193,7 @@
     const doc = new DOMParser().parseFromString(html, "text/html");
 
     const playCount = extractPlayCount(doc, row.diffId);
+    const clear = extractClearStatus(doc, row.diffId);
 
     if (!playCount) {
       console.warn(
@@ -188,7 +211,7 @@
       console.log(doc.body ? doc.body.innerHTML : html);
     }
 
-    return playCount;
+    return { playCount, clear };
   }
 
   async function hydratePlayCounts(rows, token) {
@@ -206,7 +229,9 @@
       await Promise.all(
         chunk.map(async row => {
           try {
-            row.playCount = await fetchPlayCount(row, token);
+            const detail = await fetchPlayCount(row, token);
+            row.playCount = detail.playCount || "";
+            row.clear = detail.clear || "";
           } catch (e) {
             console.warn(
               "playCount取得失敗:",
@@ -216,12 +241,13 @@
             );
 
             row.playCount = "";
+            row.clear = "";
           }
 
           completed++;
 
           console.log(
-            `[${completed}/${rows.length}] ${row.title} ${row.diff} playCount=${row.playCount}`
+            `[${completed}/${rows.length}] ${row.title} ${row.diff} playCount=${row.playCount} clear=${row.clear || "-"}`
           );
           updateProgressOverlay(completed, rows.length);
         })
@@ -241,8 +267,8 @@
     return rows;
   }
 
-  function buildTsv(results) {
-    const header = ["frame","title","diff","score","idx","playCount"];
+  function buildTsv(results, playerName) {
+    const header = ["frame","title","diff","score","idx","playCount","clear"];
 
     const lines = [header.join("\t")].concat(
       results.map(r => [
@@ -251,7 +277,8 @@
         r.diff,
         r.score,
         r.idx,
-        r.playCount || ""
+        r.playCount || "",
+        r.clear || ""
       ].join("\t"))
     );
 
@@ -378,17 +405,26 @@
       const firstDoc = await fetchDoc(BASE + PAGES[0].path);
       const token = extractToken(firstDoc);
 
+      let playerName = String(extractPlayerName(document) || "");
+      try {
+        const homeDoc = await fetchDoc(location.origin + "/chuni-mobile/html/mobile/home/");
+        playerName = String(extractPlayerName(homeDoc) || playerName || "");
+      } catch (e) {
+        console.warn("プレイヤー名取得用のhome取得に失敗しました:", e.message || e);
+      }
+
       if (!token) {
         alert("tokenを取得できませんでした。プレイ回数なしでTSVを出力します。");
       } else {
         await hydratePlayCounts(results, token);
       }
 
-      const tsv = buildTsv(results);
+      const tsv = buildTsv(results, playerName);
 
       if (doJump) {
         const encoded = encodeURIComponent(tsv);
-        location.href = RECEIVER_URL + "#tsv=" + encoded;
+        const encodedPlayerName = encodeURIComponent(playerName || "");
+        location.href = RECEIVER_URL + "#playerName=" + encodedPlayerName + "&tsv=" + encoded;
         return;
       }
 
